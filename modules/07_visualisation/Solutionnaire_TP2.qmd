@@ -1,0 +1,187 @@
+---
+title: "Solutionnaire du TP2"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages(library(tidyverse))
+knitr::opts_chunk$set(fig.width = 8, fig.height = 4, out.width = "85%", dpi = 110)
+```
+
+```{r}
+#| eval: false
+library(tidyverse)
+bebes <- read_csv("/home/public/tidyverse/babynames.csv")
+notes <- read_tsv("/home/public/tidyverse/grades.tsv")
+sexes <- read_tsv("/home/public/tidyverse/grades_sex.tsv")
+```
+
+```{r}
+#| echo: false
+# copies locales de /home/public/tidyverse/
+bebes <- read_csv("data/babynames.csv", show_col_types = FALSE)
+notes <- read_tsv("data/grades.tsv", show_col_types = FALSE)
+sexes <- read_tsv("data/grades_sex.tsv", show_col_types = FALSE)
+```
+
+# À votre tour
+
+## 1. Naissances par année
+
+```{r}
+naissances <- bebes |> summarise(n = sum(n), .by = year)
+ggplot(naissances, aes(year, n)) +
+  geom_line() +
+  labs(x = "Année", y = "Naissances", title = "Naissances enregistrées aux États-Unis")
+slice_max(naissances, n, n = 1)
+```
+
+Le maximum est en **1957**, au cœur du *baby-boom*. Attention : le fichier ne contient que les prénoms donnés au moins 5 fois dans l'année, et les premières années sont mal enregistrées. Ce sont des naissances « enregistrées », pas toutes les naissances.
+
+## 2. Par année et par sexe
+
+```{r}
+bebes |>
+  summarise(n = sum(n), .by = c(year, sex)) |>
+  ggplot(aes(year, n, fill = sex)) +
+  geom_col() +
+  facet_grid(sex ~ .) +
+  scale_fill_manual(values = c(F = "pink", M = "lightblue")) +
+  theme_bw()
+```
+
+## 3. Par décennie
+
+```{r}
+bebes |>
+  mutate(decennie = year %/% 10 * 10) |>
+  summarise(n = sum(n), .by = decennie) |>
+  ggplot(aes(factor(decennie), n)) +
+  geom_col(fill = "darkblue", width = 0.6) +
+  labs(x = "Décennie", y = "Naissances") +
+  theme_minimal()
+```
+
+`factor(decennie)` donne une barre par décennie avec son étiquette. La dernière décennie (2010) ne contient que 8 années : sa barre est forcément plus basse. Un graphique honnête le signalerait.
+
+## 4. Le top 10 des garçons en 2017
+
+```{r}
+top <- bebes |>
+  filter(sex == "M", year == 2017) |>
+  slice_max(n, n = 10) |>
+  pull(name)
+top
+
+bebes |>
+  filter(sex == "M", name %in% top) |>
+  ggplot(aes(year, n, color = name)) +
+  geom_line()
+```
+
+`sex == "M"` est nécessaire **deux fois** : certains prénoms (`Logan`, `Elijah`…) sont aussi donnés à des filles, et leurs courbes se mélangeraient.
+
+## 5. Les notes en format long
+
+```{r}
+notes_long <- notes |>
+  pivot_longer(D1:E2, names_to = "Type", values_to = "Note") |>
+  mutate(Type = fct_inorder(Type)) |>          # ordre des colonnes = ordre du trimestre
+  left_join(sexes, by = "ID_etu")
+
+ggplot(notes_long, aes(x = Type, y = Note, fill = Cohorte)) +
+  geom_boxplot() +
+  facet_wrap(~ Annee) +
+  theme_bw()
+```
+
+Le *warning* `Removed 1 row` correspond à la note `D2` manquante. Les examens (`E1`, `E2`) ont des notes plus basses et plus dispersées que les devoirs.
+
+## 6. Par année et par sexe
+
+```{r}
+ggplot(notes_long, aes(x = factor(Annee), y = Note, fill = Sex)) +
+  geom_boxplot() +
+  labs(x = "Année", fill = "Sexe")
+```
+
+## 7. Les positions
+
+```{r}
+#| fig-width: 11
+#| fig-height: 3.5
+quatre <- notes_long |> filter(ID_etu %in% paste0("Etu_", 1:4))
+g <- ggplot(quatre, aes(x = ID_etu, y = Note, fill = Type))
+g + geom_col(position = "stack") + ggtitle("stack : la somme (sur 600)")
+g + geom_col(position = "fill") + ggtitle("fill : la part de chaque évaluation (sur 1)") + labs(y = "proportion")
+g + geom_col(position = "dodge") + ggtitle("dodge : chaque note")
+```
+
+Avec `"fill"`, toutes les barres valent 1 : on compare des **parts**, plus des notes. Renommez l'axe y, sinon il annonce encore « Note ».
+
+# Et si… ?
+
+## 1. Sans `color = name`
+
+```{r}
+#| fig-height: 3.2
+bebes |>
+  filter(sex == "M", name %in% top) |>
+  ggplot(aes(year, n)) +
+  geom_line()
+```
+
+`geom_line()` relie **toutes** les lignes du tableau dans l'ordre des x : chaque année, la ligne monte et descend entre les 10 prénoms. Aucun message. `color = name` (ou `group = name`) indique quelles lignes forment **une même courbe**.
+
+## 2. Sans `summarise()`
+
+```{r}
+#| eval: false
+ggplot(bebes, aes(year, n)) + geom_line()
+```
+
+Le graphique (long à afficher : 1.9 million de lignes) est une bande noire : pour chaque année, la ligne parcourt tous les prénoms. `ggplot2` ne résume pas pour vous avec `geom_line()` : la somme se calcule **avant**.
+
+## 3. `limits` ou `coord_cartesian()`
+
+```{r}
+#| warning: true
+#| fig-width: 11
+#| fig-height: 3.5
+ggplot(notes_long, aes(Type, Note, fill = Cohorte)) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(50, 100))
+```
+
+```{r}
+notes_long |>
+  summarise(mediane = median(Note, na.rm = TRUE),
+            mediane_sup50 = median(Note[Note >= 50], na.rm = TRUE), .by = Type)
+```
+
+`limits` retire les `r sum(notes_long$Note < 50, na.rm = TRUE)` notes sous 50 (et le `NA`) **avant** le calcul : la médiane de `E2`, par exemple, passe de `r median(notes_long$Note[notes_long$Type == "E2"])` à `r round(median(notes_long$Note[notes_long$Type == "E2" & notes_long$Note >= 50]), 2)`. Le *warning* est le seul indice. `coord_cartesian(ylim = c(50, 100))` zoome sans rien retirer : les boxplots restent justes, et les points sous 50 sortent simplement du cadre.
+
+## 4. `Annee` numérique
+
+```{r}
+#| warning: true
+#| fig-height: 3.2
+ggplot(notes_long, aes(x = Annee, y = Note, fill = Sex)) +
+  geom_boxplot()
+```
+
+`Annee` est un **nombre** : l'axe x est continu, et `ggplot2` ne sait pas qu'il faut une boîte par année. Il fait une boîte **par sexe**, sur les trois années mélangées, placée vers 2019. Le seul indice est un *warning* qui ne parle pas du problème (`Orientation is not uniquely specified when both the x and y aesthetics are continuous`) : il faut **regarder** l'axe x. `factor(Annee)` transforme l'année en **catégorie**.
+
+## 5. L'ordre oublié
+
+```{r}
+#| fig-height: 3.2
+notes |>
+  pivot_longer(D1:E2, names_to = "Type", values_to = "Note") |>
+  ggplot(aes(Type, Note)) +
+  geom_boxplot()
+```
+
+Sans facteur, `ggplot2` trie le texte **par ordre alphabétique** : D1, D2, D3, D4, E1, E2. Les examens sont regroupés à la fin : un lecteur croirait que les notes baissent en fin de trimestre, alors que c'est le **type** d'évaluation qui compte. `fct_inorder()` (ordre des colonnes) ou `factor(Type, levels = c("D1", "D2", "E1", "D3", "D4", "E2"))` rétablissent l'ordre réel.

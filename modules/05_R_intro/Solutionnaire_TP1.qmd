@@ -1,0 +1,107 @@
+---
+title: "Solutionnaire du TP1"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+```
+
+# À votre tour
+
+## 1. Créer les vecteurs `x` et `y`
+
+```{r}
+x <- c(1, 2, 3, 4, 5)   # ou x <- 1:5
+y <- c(4, 4, 4, 4, 4)   # ou y <- rep(4, 5)
+```
+
+## 2. Additionner les vecteurs
+
+L'addition se fait **élément par élément** : le 1er avec le 1er, le 2e avec le 2e, etc.
+
+```{r}
+x + y
+```
+
+## 3. Assigner le résultat à `z`
+
+```{r}
+z <- x + y
+z
+```
+
+## 4. Lister les variables
+
+```{r}
+ls()
+```
+
+On retrouve les mêmes noms dans le panneau *Environment* de RStudio.
+
+## 5. Le deuxième élément de `z`
+
+```{r}
+z[2]
+```
+
+## 6. Les éléments de `z` plus petits que 7
+
+La comparaison produit un vecteur logique, qu'on utilise ensuite comme index :
+
+```{r}
+z < 7
+z[z < 7]
+```
+
+## 7. Une matrice de 3 rangées et 2 colonnes
+
+```{r}
+m <- matrix(1:6, nrow = 3, ncol = 2)
+m
+```
+
+Par défaut, R remplit la matrice **colonne par colonne** (`byrow = FALSE`, voir `help(matrix)`).
+
+# Et si… ?
+
+## 1. `x[10]`
+
+```{r}
+x[10]
+```
+
+`x` n'a que 5 éléments : R renvoie `NA` (valeur manquante) plutôt qu'une erreur. C'est un piège, car le calcul continue avec une valeur manquante sans prévenir.
+
+## 2. `x[-1]`
+
+```{r}
+x[-1]
+```
+
+Un indice négatif **retire** l'élément : `x[-1]` donne tous les éléments sauf le premier.
+
+## 3. `x + c(1, 2)`
+
+```{r}
+x + c(1, 2)
+```
+
+Le vecteur court est recyclé (`1, 2, 1, 2, 1`). Comme 5 n'est pas un multiple de 2, R affiche un *warning* : le calcul est fait, mais il est probablement faux.
+
+## 4. `byrow = TRUE`
+
+```{r}
+matrix(1:6, nrow = 3, ncol = 2, byrow = TRUE)
+```
+
+La matrice est remplie **rangée par rangée** au lieu de colonne par colonne.
+
+## 5. `matrix(1:6, ncol = 4)`
+
+```{r}
+matrix(1:6, ncol = 4)
+```
+
+6 valeurs ne remplissent pas exactement 4 colonnes : R recycle les valeurs pour compléter la matrice et affiche un *warning*.

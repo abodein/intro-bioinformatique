@@ -1,0 +1,125 @@
+---
+title: "Guide d'étude : statistiques avec R"
+subtitle: "Ce qu'il faut savoir faire pour les oraux et l'évaluation sur table"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+```
+
+# Ce que ce module ajoute
+
+Les modules précédents vous ont appris à importer, manipuler et visualiser des données. Ce module passe à l'étape suivante : **conclure**. Est-ce que la différence qu'on voit sur le graphique dépasse ce que le hasard produirait ? De combien ? Avec quelle incertitude ?
+
+R exécute n'importe quel test sur n'importe quelles données, sans jamais vérifier que le test répond à la bonne question. Les erreurs de ce module sont donc presque toutes **silencieuses** : un test indépendant appliqué à des données appariées, un groupe codé en nombre dans une ANOVA, une variable oubliée qui inverse une pente, un niveau de référence alphabétique qui inverse tous les log2 *fold changes*, des `NA` comptés comme des gènes significatifs. Aucune ne produit d'erreur, et un assistant d'IA ne peut pas les éviter à votre place : il ne connaît ni votre plan d'expérience ni le contenu de vos colonnes. C'est sur elles que portent les questions.
+
+# Comment ce module est évalué
+
+Comme le reste du cours, **en présence et sans outil d'IA** :
+
+- à l'**évaluation sur table** (50 % de la note du cours) : [À PRÉCISER : sur papier ou en salle informatique surveillée, durée, documents permis] ;
+- lors des **oraux** individuels (25 % chacun) : [À PRÉCISER : quel oral porte sur les statistiques].
+
+On ne vous demandera pas de formules à apprendre par cœur ni de calculs à la main. On vérifiera que vous savez **choisir** un test, **lire** une sortie de R et **repérer** une conclusion fausse : dire si un test est apparié ou non, lire le sens d'une différence, prédire les degrés de liberté d'une ANOVA, expliquer pourquoi un compte de gènes est gonflé. Ce sont les formats des pauses « À vous » des diapos, des sections « Et si… ? » des TP et de l'exercice formatif.
+
+# Les types de questions
+
+| Type | Ce qu'on vous demande | Exemple déjà vu |
+|---|---|---|
+| **Prédire** | Donner le résultat sans exécuter | `Df` de `aov(body_mass ~ year)` avec une année numérique (diapos, TP2) |
+| **Erreur** | Expliquer pourquoi un résultat est faux | Un test indépendant sur les données appariées de `sleep` (diapos, TP1) |
+| **Et si** | Anticiper l'effet d'une modification | Inverser l'ordre des niveaux avant un t-test (TP1) |
+| **Expliquer** | Justifier un concept avec vos mots | Pourquoi p > 0.05 ne prouve pas l'absence de différence (diapos) |
+| **Lire** | Interpréter une sortie de R | Le sens d'un log2FoldChange d'après l'en-tête de `res` (diapos, TP3) |
+| **Choisir** | Proposer le test adapté à un plan d'expérience | Pause « À vous : choisir le test » (diapos) |
+
+À l'oral, chaque réponse est suivie d'une **relance** : « pourquoi ? », « comment l'auriez-vous vérifié ? ». Une réponse juste sans explication ne suffit pas.
+
+# Ce que vous devez savoir faire
+
+## S-DES : décrire
+
+- Calculer moyenne, médiane, écart-type, IQR par groupe (`summarise(..., .by = )`), avec `na.rm = TRUE`.
+- Expliquer pourquoi la médiane est **robuste** et la moyenne non ; repérer une valeur aberrante par l'écart entre les deux.
+- Lire un boxplot (médiane, quartiles, moustaches, points atypiques) ; savoir qu'un boxplot seul cache l'effectif.
+
+*Où le travailler :* section 2 des diapos, TP1 (Q1).
+
+## S-CND : vérifier les conditions
+
+- Lire un Q-Q plot : normal, asymétrique, queues lourdes, bimodal.
+- Faire et interpréter Shapiro-Wilk et Levene ; savoir que **p > 0.05 ne démontre pas** la normalité, et que le test n'a presque pas de puissance avec peu de données.
+- Savoir que le t-test de Welch (défaut de R) ne suppose pas l'égalité des variances, et que la normalité d'une régression ou d'une ANOVA porte sur les **résidus**.
+
+*Où le travailler :* section 2 des diapos (pause « À vous : lire des Q-Q plots »), TP1 (Q2, Q3), TP2 (Q3, Q5), exercice formatif Q2.
+
+## S-HYP : la logique d'un test
+
+- Formuler H0 et H1 pour une question biologique.
+- Définir la p-value, et dire ce qu'elle **n'est pas** (la probabilité que H0 soit vraie, la taille de l'effet).
+- Expliquer pourquoi « p > 0.05 » ne veut pas dire « pas de différence », et lire l'**intervalle de confiance** pour dire ce que les données permettent d'exclure.
+- Distinguer erreurs de type I et II ; dire ce qui augmente la puissance.
+
+*Où le travailler :* section 3 des diapos (« La p-value, par simulation », « Ce que la p-value n'est pas »), TP1 (« Et si… ? » 3), exercice formatif Q1.
+
+## S-TST : choisir et lire un test à deux groupes
+
+- Choisir entre t-test, Wilcoxon, apparié ou non, selon le type de variable et le **plan d'expérience**.
+- Faire un test apparié correctement : `pivot_wider()` pour aligner les paires, puis `paired = TRUE` ; savoir que la formule refuse `paired` et qu'apparier dans le mauvais ordre ne produit **aucun message**.
+- Lire une sortie de `t.test()` : sens de la différence (ordre des niveaux), IC, p-value ; écrire une phrase de conclusion avec l'effet.
+- Savoir que la formule écarte les `NA` **sans message** : vérifier combien d'observations le test a utilisées.
+
+*Où le travailler :* section 3 des diapos, TP1, exercice formatif Q1 et Q3.
+
+## S-ANO : comparer plusieurs groupes
+
+- Expliquer pourquoi on ne fait pas plusieurs t-tests (1 − 0.95^k^).
+- Faire et lire une ANOVA (`aov()`, `summary()`) puis un test de Tukey ; ou Kruskal-Wallis.
+- Prédire `Df` (nombre de groupes − 1) et repérer un groupe **codé en nombre** (`Df` = 1), corrigé par `factor()`.
+
+*Où le travailler :* section 4 des diapos (« Piège : un groupe codé en nombre », pause « À vous »), TP2 (Q1 à Q3, « Et si… ? » 1 et 2), exercice formatif Q4.
+
+## S-REG : la régression linéaire
+
+- Ajuster `lm()`, lire la pente **avec son unité**, l'ordonnée à l'origine, le R² et le nombre d'observations utilisées.
+- Vérifier les résidus (`plot(modele, which = 1:2)`).
+- Interpréter un coefficient de facteur (`speciesGentoo`) par rapport au **niveau de référence**.
+- Expliquer le **paradoxe de Simpson**, le quartet d'Anscombe, « corrélation n'est pas causalité », et le danger d'**extrapoler**.
+
+*Où le travailler :* section 5 des diapos, TP2 (Q4 à Q6, « Et si… ? » 3 à 5), exercice formatif Q6.
+
+## S-MUL : les tests multiples
+
+- Prédire le nombre de faux positifs attendus quand aucun effet n'existe (nombre de tests × α).
+- Distinguer Bonferroni (FWER) et Benjamini-Hochberg (FDR) ; savoir que `padj` est la colonne à utiliser.
+- Lire un histogramme de p-values (plat : pas de signal ; pic près de 0 : du signal).
+
+*Où le travailler :* section 6 des diapos, TP3 (« Et si… ? » 2), exercice formatif Q5.
+
+## S-DEA : l'expression différentielle avec DESeq2
+
+- Expliquer pourquoi on n'utilise pas un t-test sur des comptes RNA-seq (entiers, surdispersion, profondeur variable, peu de réplicats).
+- Construire `dds` : comptes et description des échantillons **dans le même ordre**, `design` qui reflète le plan d'expérience (`~ cell + dex`).
+- Fixer le **niveau de référence** et vérifier le contraste en lisant l'**en-tête** de `res`.
+- Compter les gènes DE sans compter les `NA` (`filter()`, `na.rm = TRUE`) ; expliquer ce que veut dire une `padj` manquante.
+- Lire un MA-plot, une ACP et un *volcano plot*.
+
+*Où le travailler :* section 6 des diapos, TP3, exercice formatif Q7.
+
+## S-AUD : vérifier une analyse
+
+- Repérer dans un script statistique les erreurs **silencieuses** : plan apparié ignoré, référence alphabétique, `NA` comptés par un crochet, `pvalue` au lieu de `padj`, groupe numérique dans une ANOVA.
+- Distinguer ce qui est faux de ce qui est correct (ne pas « corriger » un filtrage `rowSums >= 10` justifié).
+- Expliquer pourquoi ces erreurs viennent du **plan d'expérience et des données**, et pourquoi un outil qui ne les voit pas ne peut pas les éviter.
+
+*Où le travailler :* activité « Auditer un script DESeq2 généré par IA » et son corrigé.
+
+# Comment vous préparer
+
+1. **Refaites sans ordinateur** les pauses « À vous », les « Et si… ? » des TP et l'exercice formatif : écrivez votre prédiction, *puis* vérifiez dans RStudio.
+2. Devant chaque sortie de test, prenez l'habitude de répondre à trois questions : **dans quel sens** est la différence ? **de combien** (IC) ? **sur combien d'observations** ?
+3. Devant chaque plan d'expérience, demandez-vous d'abord : les mesures sont-elles **indépendantes ou appariées** ? Quel est le **niveau de référence** ?
+4. Refaites l'activité d'audit **seul**, en appliquant les vérifications systématiques du corrigé.
+5. Les solutionnaires des TP donnent les réponses et les explications : lisez surtout les explications.

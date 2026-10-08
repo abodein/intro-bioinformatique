@@ -1,0 +1,136 @@
+---
+title: "Solutionnaire du TP2"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(car)})
+theme_set(theme_minimal())
+knitr::opts_chunk$set(fig.width = 7, fig.height = 3.8, out.width = "85%", message = FALSE)
+# copie locale de /home/public/stat/penguins.tsv
+manchots <- read_tsv("data/penguins.tsv", show_col_types = FALSE)
+```
+
+# À votre tour
+
+## 1. ANOVA sur la longueur de la nageoire
+
+```{r}
+ggplot(manchots, aes(species, flipper_len)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.4)
+
+modele_aov <- aov(flipper_len ~ species, data = manchots)
+summary(modele_aov)
+```
+
+`Df` = 2 : 3 espèces − 1. Le message `2 observations deleted due to missingness` indique que 2 manchots sans mesure ont été écartés. La p-value est minuscule : au moins une espèce a une longueur moyenne différente.
+
+## 2. Quelles espèces diffèrent ?
+
+```{r}
+TukeyHSD(modele_aov)
+```
+
+Les trois paires diffèrent (p ajustée < 0.001). Les nageoires des Gentoo dépassent celles des Adélie d'environ **27 mm** (IC 95 % : 25 à 29 mm).
+
+## 3. Conditions et Kruskal-Wallis
+
+```{r}
+plot(modele_aov, which = 2)
+leveneTest(flipper_len ~ factor(species), data = manchots)
+kruskal.test(flipper_len ~ species, data = manchots)
+```
+
+Les résidus suivent bien la droite du Q-Q plot. Levene ne rejette pas l'égalité des variances. Kruskal-Wallis conduit à la même conclusion : l'effet de l'espèce est massif, il ne dépend pas du test.
+
+## 4. Régression de la masse sur la nageoire
+
+```{r}
+ggplot(manchots, aes(flipper_len, body_mass)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+
+modele <- lm(body_mass ~ flipper_len, data = manchots)
+summary(modele)
+nobs(modele)
+```
+
+- **Pente** : 49.7 **g par mm** de nageoire, très significative
+- **R²** = 0.76 : la longueur de la nageoire explique 76 % de la variance de la masse
+- **`r nobs(modele)` manchots** utilisés : 2 ont été écartés (`2 observations deleted due to missingness`)
+
+## 5. Les résidus
+
+```{r}
+#| fig-width: 9
+par(mfrow = c(1, 2))
+plot(modele, which = 1:2)
+```
+
+Le Q-Q plot est satisfaisant. Le graphique des résidus montre une légère courbure (résidus positifs aux extrémités) : la relation n'est pas parfaitement linéaire, en partie parce que les trois espèces forment des nuages distincts. Rien de grave pour une première analyse, mais un modèle avec l'espèce serait plus juste.
+
+## 6. Le paradoxe de Simpson
+
+```{r}
+ggplot(manchots, aes(bill_len, bill_dep)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+
+ggplot(manchots, aes(bill_len, bill_dep, colour = species)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+
+coef(lm(bill_dep ~ bill_len, data = manchots))
+coef(lm(bill_dep ~ bill_len + species, data = manchots))
+```
+
+Tous ensemble, la pente est **négative** (−0.09 mm par mm) ; à espèce égale, elle est **positive** (+0.20 mm par mm). Les Gentoo ont un bec long mais peu profond, les Adélie un bec court mais profond : mélanger les espèces crée une tendance négative qui n'existe dans **aucune** d'elles. Une variable oubliée (l'espèce) peut inverser une conclusion, sans aucun message.
+
+# Et si… ?
+
+## 1. L'année, numérique ou facteur
+
+```{r}
+summary(aov(body_mass ~ year, data = manchots))
+summary(aov(body_mass ~ factor(year), data = manchots))
+```
+
+`Df` = 1 avec l'année numérique : `aov()` ajuste une **droite** (une tendance linéaire dans le temps). `Df` = 2 avec `factor(year)` : on compare les **3 années** comme trois groupes. Pour la question « la masse diffère-t-elle selon l'année ? », c'est `factor(year)`. Ici, aucune des deux n'est significative, mais avec un effet non monotone (une année atypique au milieu), seule la version facteur le verrait.
+
+## 2. Trois t-tests
+
+```{r}
+1 - 0.95^3
+```
+
+Environ **14 %**, au lieu de 5 %. C'est pourquoi on fait une ANOVA, puis des comparaisons **ajustées** (Tukey).
+
+## 3. Une nageoire de 150 mm
+
+```{r}
+predict(modele, newdata = tibble(flipper_len = 150))
+range(manchots$flipper_len, na.rm = TRUE)
+```
+
+Environ 1.7 kg, mais 150 mm est **hors de l'étendue des données** (172 à 231 mm). Le modèle n'a jamais vu de manchot aussi petit : rien ne garantit que la relation reste linéaire. R ne prévient pas.
+
+## 4. Corrélation négative entre longueur et profondeur du bec
+
+```{r}
+cor.test(manchots$bill_len, manchots$bill_dep)
+manchots |> summarise(r = cor(bill_len, bill_dep, use = "complete.obs"), .by = species)
+```
+
+Non : c'est le paradoxe de Simpson de la question 6. Dans **chaque** espèce, la corrélation est positive (0.39 à 0.65). La corrélation globale négative vient du mélange des espèces. Une corrélation significative ne dit rien de la cause, ni même du sens de la relation à l'intérieur des groupes.
+
+## 5. Le niveau de référence dans `lm()`
+
+```{r}
+coef(lm(body_mass ~ species, data = manchots))
+manchots |> summarise(moyenne = mean(body_mass, na.rm = TRUE), .by = species)
+```
+
+`Adelie` est le **premier niveau** (ordre alphabétique) : c'est la **référence**. L'ordonnée à l'origine est la masse moyenne des Adélie (3701 g) ; `speciesChinstrap` (+32 g) et `speciesGentoo` (+1375 g) sont des **différences** par rapport aux Adélie. C'est exactement la logique du `log2FoldChange` de DESeq2 (TP3).

@@ -1,0 +1,60 @@
+---
+title: "TP2 : construire et ajuster un graphique"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+Ouvrez un **nouveau script** et chargez le *tidyverse*. Les données sont celles du module 6 :
+
+```{r}
+#| eval: false
+library(tidyverse)
+bebes <- read_csv("/home/public/tidyverse/babynames.csv")
+notes <- read_tsv("/home/public/tidyverse/grades.tsv")
+sexes <- read_tsv("/home/public/tidyverse/grades_sex.tsv")
+```
+
+# Les données
+
+- `babynames.csv` : les prénoms des bébés nés aux États-Unis de 1880 à 2017 : `year`, `sex` (`F` ou `M`), `name`, `n` (nombre de bébés), `prop` (proportion des naissances de l'année) ;
+- `grades.tsv` : les notes (sur 100) de 79 étudiants du cours : `ID_etu`, six évaluations dans l'ordre du trimestre (`D1`, `D2`, `E1`, `D3`, `D4`, `E2` : devoirs et examens), `Annee`, `Cohorte` ;
+- `grades_sex.tsv` : `ID_etu` et `Sex`.
+
+# Rappel : les commandes
+
+| Objectif | Commande |
+|---|---|
+| Résumer avant de tracer | `summarise(total = sum(n), .by = c(year, sex))` |
+| Une ligne par groupe | `aes(color = name)` ou `aes(group = name)` |
+| Positions des barres | `geom_col(position = "stack")`, `"dodge"`, `"fill"` |
+| Facettes | `facet_wrap(~ var)`, `facet_grid(lignes ~ colonnes)` |
+| Couleurs choisies | `scale_fill_manual(values = c(F = "pink", M = "lightblue"))` |
+| Format long | `pivot_longer(D1:E2, names_to = "Type", values_to = "Note")` |
+| Ordre des catégories | `factor(x, levels = c(...))`, `fct_inorder()`, `fct_reorder()` |
+| Zoomer | `coord_cartesian(ylim = c(...))` |
+
+# À votre tour
+
+**Les prénoms**
+
+1. Tracez le nombre total de naissances par année (une courbe). En quelle année y a-t-il eu le plus de naissances ?
+2. Tracez le nombre de naissances par année **et par sexe** avec des barres, un panneau par sexe (`facet_grid(sex ~ .)`), en rose et bleu clair.
+3. Tracez le nombre de naissances **par décennie** avec un barplot (indice : `year %/% 10 * 10`).
+4. Trouvez les 10 prénoms de garçons les plus donnés en 2017, puis tracez leur évolution depuis 1880 (une courbe par prénom).
+
+**Les notes**
+
+5. Passez `notes` en format long (`notes_long` : colonnes `Type` et `Note`), et ajoutez le sexe avec `left_join()`. Tracez les boxplots des notes par type d'évaluation, une couleur par cohorte, un panneau par année. Les évaluations doivent apparaître **dans l'ordre du trimestre**.
+6. Tracez les boxplots des notes par année et par sexe.
+7. Pour les étudiants `Etu_1` à `Etu_4`, tracez une barre par étudiant, découpée selon le type d'évaluation (`fill = Type`). Comparez les positions `"stack"`, `"fill"` et `"dodge"`. Que représente l'axe y dans chaque cas ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R.
+
+1. Et si, à la question 4, on retirait `color = name` ? À quoi ressemblera la courbe ?
+2. Et si on traçait la question 1 **sans** `summarise()` : `ggplot(bebes, aes(year, n)) + geom_line()` ?
+3. Et si on ajoutait `scale_y_continuous(limits = c(50, 100))` à la question 5 ? Les boxplots changent-ils ? Comparez avec `coord_cartesian(ylim = c(50, 100))`.
+4. Et si, à la question 6, on écrivait `aes(x = Annee, ...)` au lieu de `aes(x = factor(Annee), ...)` ?
+5. Et si on oubliait l'ordre des évaluations à la question 5 : dans quel ordre seraient-elles ? Qu'est-ce qui deviendrait trompeur ?

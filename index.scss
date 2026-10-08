@@ -1,0 +1,12 @@
+/*-- scss:defaults --*/
+$rouge-ul: #E30513;
+$primary: $rouge-ul;
+$link-color: $rouge-ul;
+$body-color: #222222;
+$font-size-root: 17px;
+
+/*-- scss:rules --*/
+.module { border-left: 4px solid $rouge-ul; padding: .2rem 0 .2rem 1rem; margin: 1.6rem 0; }
+.module h3 { margin-top: 0; }
+.module .date { color: #6b6b6b; font-size: .9em; }
+.module ul { margin-bottom: 0; }

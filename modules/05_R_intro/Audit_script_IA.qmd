@@ -1,0 +1,194 @@
+---
+title: "Activité : auditer un script généré par IA"
+metadata-files: [_tp.yml]
+corrige: false
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+```
+
+::: {.content-visible when-meta="corrige"}
+::: {.callout-important}
+**Corrigé.** Réservé à la correction en classe : à déposer après la séance.
+:::
+:::
+
+**Activité formative, non notée**
+
+# Contexte
+
+Une chercheuse a demandé à un assistant d'IA :
+
+> *« J'ai un fichier `patients.tsv` avec les colonnes `id`, `groupe` (traité ou contrôle), `age` et `TP53` (expression du gène). Écris-moi un script R qui calcule la différence d'expression moyenne de TP53 entre les groupes traité et contrôle, compte les patients dont l'expression dépasse 8, et affiche les 3 patients avec la plus forte expression. »*
+
+Voici le script obtenu. Il a été écrit pour cet exercice, dans le style d'un assistant d'IA. **Il s'exécute sans aucune erreur ni aucun warning.**
+
+```{r}
+#| eval: false
+# Analyse de l'expression de TP53 selon le groupe
+# Script vérifié et prêt à l'emploi.
+
+donnees <- read.table("/home/public/R/patients.tsv", header = TRUE, sep = "\t")
+
+# 1. Différence d'expression moyenne entre les groupes
+moy_traite   <- mean(donnees$TP53[donnees$groupe == "traite"], na.rm = TRUE)
+moy_controle <- mean(donnees$TP53[donnees$groupe == "controle"], na.rm = TRUE)
+moy_traite - moy_controle
+
+# 2. Nombre de patients avec une expression élevée (> 8)
+nrow(donnees[donnees$TP53 > 8, ])
+
+# 3. Les 3 patients avec la plus forte expression
+donnees[sort(donnees$TP53, decreasing = TRUE)[1:3], ]
+```
+
+Le script contient **au moins 3 erreurs**. Aucune ne produit de message : les résultats ont l'air normaux, mais ils sont faux.
+
+::: {.content-hidden when-meta="corrige"}
+
+# Partie A : lire sans exécuter
+
+1. Pour chacun des 3 blocs, écrivez en une phrase ce que le code est **censé** faire, puis ce qu'il fait **réellement**.
+2. Repérez les lignes suspectes. Indices : pensez aux valeurs manquantes (`NA`), à la différence entre `sort()` et `order()`, et à la manière dont les données ont pu être saisies.
+3. Le commentaire affirme « Script vérifié et prêt à l'emploi ». Qu'en pensez-vous ?
+
+# Partie B : vérifier dans RStudio
+
+1. Exécutez le script et notez les 3 résultats.
+2. Avant de corriger, **inspectez les données** :
+
+```{r}
+#| eval: false
+head(donnees)
+str(donnees)
+table(donnees$groupe)       # compte les valeurs de chaque catégorie
+sum(is.na(donnees$TP53))    # nombre de valeurs manquantes
+```
+
+3. Quels résultats de la partie A se confirment ?
+
+# Partie C : corriger
+
+1. Corrigez le script pour qu'il réponde vraiment à la demande.
+2. Pour chaque correction, ajoutez un commentaire (`#`) qui explique l'erreur.
+3. Comparez vos 3 résultats avec ceux du script d'origine : de combien diffèrent-ils ?
+
+# Pour finir : discussion
+
+- Quelles vérifications auriez-vous dû faire **avant** de faire confiance à ce script ?
+- Qu'auriez-vous pu écrire dans la demande à l'assistant pour éviter ces erreurs ?
+
+:::
+
+::: {.content-visible when-meta="corrige"}
+
+```{r}
+#| include: false
+donnees <- read.table("data/patients.tsv", header = TRUE, sep = "\t")
+```
+
+# Les données
+
+```{r}
+donnees
+table(donnees$groupe)
+sum(is.na(donnees$TP53))
+```
+
+Deux constats avant même de lire le script : le groupe contrôle est saisi de **deux façons** (`controle` et `Controle`), et une valeur de `TP53` est **manquante** (P05).
+
+# Erreur 1 : deux patients contrôles oubliés
+
+```{r}
+donnees$TP53[donnees$groupe == "controle"]
+```
+
+La comparaison `== "controle"` ignore `"Controle"` (R distingue les majuscules) : la moyenne du groupe contrôle est calculée sur **4 patients au lieu de 6**. On uniformise d'abord la saisie :
+
+```{r}
+donnees$groupe <- tolower(donnees$groupe)
+table(donnees$groupe)
+```
+
+# Erreur 2 : le patient sans valeur est compté
+
+```{r}
+donnees$TP53 > 8
+nrow(donnees[donnees$TP53 > 8, ])
+```
+
+Pour P05, `NA > 8` vaut `NA` : la sélection ajoute une rangée `NA`, que `nrow()` compte. On obtient **6 au lieu de 5**. Correction : compter les `TRUE` en ignorant les `NA`.
+
+```{r}
+sum(donnees$TP53 > 8, na.rm = TRUE)
+```
+
+# Erreur 3 : `sort()` au lieu de `order()`
+
+```{r}
+sort(donnees$TP53, decreasing = TRUE)[1:3]
+```
+
+`sort()` renvoie des **valeurs** (11.6, 10.9, 9.7), que R utilise comme **numéros de rangées** (tronqués à 11, 10, 9). Le script affiche donc les patients P11, P10 et P09, dont **un patient contrôle** avec une expression de 5.6, sans aucun message. `order()` renvoie les positions des valeurs triées :
+
+```{r}
+head(donnees[order(donnees$TP53, decreasing = TRUE), ], 3)
+```
+
+# Le commentaire « Script vérifié »
+
+Un assistant d'IA ne vérifie pas les résultats sur *vos* données : il produit un texte plausible. Ce commentaire n'engage que celui qui le laisse dans le script. C'est la personne qui signe l'analyse qui en est responsable.
+
+# Script corrigé
+
+```{r}
+# Analyse de l'expression de TP53 selon le groupe
+
+donnees <- read.table("data/patients.tsv", header = TRUE, sep = "\t")
+
+# Vérifications : catégories et valeurs manquantes
+table(donnees$groupe)
+sum(is.na(donnees$TP53))
+
+# Correction 1 : le groupe contrôle est saisi "controle" et "Controle"
+donnees$groupe <- tolower(donnees$groupe)
+
+# 1. Différence d'expression moyenne entre les groupes
+moy_traite   <- mean(donnees$TP53[donnees$groupe == "traite"], na.rm = TRUE)
+moy_controle <- mean(donnees$TP53[donnees$groupe == "controle"], na.rm = TRUE)
+moy_traite - moy_controle
+
+# 2. Nombre de patients avec une expression > 8
+# Correction 2 : NA > 8 donne NA ; on compte les TRUE en ignorant les NA
+sum(donnees$TP53 > 8, na.rm = TRUE)
+
+# 3. Les 3 patients avec la plus forte expression
+# Correction 3 : order() (positions) et non sort() (valeurs)
+head(donnees[order(donnees$TP53, decreasing = TRUE), ], 3)
+```
+
+# Comparaison des résultats
+
+| Résultat | Script d'origine | Script corrigé |
+|---|---|---|
+| Différence de moyennes | 3.89 | 4.46 |
+| Patients avec TP53 > 8 | 6 | 5 |
+| Top 3 | P11, P10 (contrôle), P09 | P03, P07, P01 |
+
+Les trois résultats sont faux, et rien ne l'indiquait à l'exécution.
+
+# Cinq vérifications systématiques
+
+À faire avant de faire confiance à un script, qu'il ait été écrit par vous ou généré par un outil :
+
+1. **Les catégories** : `table()` sur chaque colonne de texte (fautes de saisie, majuscules, espaces).
+2. **Les valeurs manquantes** : `sum(is.na())` sur les colonnes utilisées dans les calculs.
+3. **Les dimensions** : `nrow()` avant et après chaque sélection. Le nombre obtenu est-il plausible ?
+4. **Quelques lignes vérifiées à la main** : le patient affiché en tête a-t-il vraiment la plus forte valeur ?
+5. **Un calcul indépendant** : retrouver un résultat par une autre méthode (`sum()` contre `nrow()`, `max()` contre le tri).
+
+Et dans la demande à l'assistant : préciser qu'il y a des `NA`, que la saisie des catégories n'est pas homogène, et lui demander d'inclure ces vérifications dans le script.
+
+:::

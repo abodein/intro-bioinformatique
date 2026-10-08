@@ -1,0 +1,254 @@
+---
+title: "Activité : auditer un script DESeq2 généré par IA"
+metadata-files: [_tp.yml]
+corrige: false
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(DESeq2)})
+```
+
+::: {.content-visible when-meta="corrige"}
+::: {.callout-important}
+**Corrigé.** Réservé à la correction en classe : à déposer après la séance.
+:::
+:::
+
+**Activité formative, non notée**
+
+# Contexte
+
+Une doctorante du laboratoire veut savoir quels gènes la dexaméthasone induit dans les cellules musculaires lisses des voies respiratoires. Elle dispose des données `airway` :
+
+- `airway_counts.tsv` : les comptes RNA-seq, une ligne par gène, une colonne par échantillon ;
+- `airway_sample_info.tsv` : une ligne par échantillon, dont `Run` (identifiant), `cell` (la lignée, c'est-à-dire le donneur) et `dex` (`trt` traité, `untrt` non traité).
+
+Elle a demandé à un assistant d'IA :
+
+> *« J'ai 4 lignées de cellules musculaires lisses, chacune traitée ou non à la dexaméthasone (airway). Écris un script DESeq2 qui compte les gènes différentiellement exprimés (FDR < 5 %) et liste les 10 gènes les plus induits par le traitement. »*
+
+Voici le script obtenu. Il a été écrit pour cet exercice, dans le style d'un assistant d'IA. **Il s'exécute sans aucune erreur.**
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(DESeq2)
+# Script vérifié : s'exécute sans erreur.
+comptes <- read_tsv("/home/public/stat/airway_counts.tsv") |>
+  column_to_rownames("gene") |> as.matrix()
+infos <- read_tsv("/home/public/stat/airway_sample_info.tsv") |>
+  column_to_rownames("Run")
+
+dds <- DESeqDataSetFromMatrix(countData = comptes, colData = infos,
+                              design = ~ dex)
+dds <- dds[rowSums(counts(dds)) >= 10, ]
+dds <- DESeq(dds)
+res <- results(dds)
+
+# 1. Nombre de gènes différentiellement exprimés (FDR < 5 %)
+res_df <- as.data.frame(res)
+nrow(res_df[res_df$padj < 0.05, ])
+
+# 2. Les 10 gènes les plus induits par la dexaméthasone
+res_df |>
+  filter(padj < 0.05) |>
+  arrange(desc(log2FoldChange)) |>
+  head(10)
+```
+
+Le script contient **au moins 3 erreurs**. Aucune ne produit d'erreur : les résultats ont l'air normaux, mais ils sont faux. Attention, certaines lignes sont **correctes** : ne corrigez que ce qui doit l'être.
+
+::: {.content-hidden when-meta="corrige"}
+
+# Partie A : lire sans exécuter
+
+1. Pour chaque bloc, écrivez en une phrase ce que le code est **censé** faire, puis ce qu'il fait **réellement**.
+2. Relisez la **demande** : que sait-on du plan d'expérience ? Le `design` en tient-il compte ?
+3. Dans `infos`, la colonne `dex` contient du texte : `"trt"` et `"untrt"`. Quel sera le **niveau de référence** de la comparaison ? Que représentera donc un log2FoldChange positif ?
+4. Que fait le crochet `res_df[res_df$padj < 0.05, ]` d'une ligne où `padj` vaut `NA` (module 5) ? Et `filter()` ?
+5. Le commentaire affirme « Script vérifié ». Qu'en pensez-vous ?
+
+# Partie B : vérifier dans RStudio
+
+1. Exécutez le script et notez les résultats. Lisez **tous** les messages affichés, y compris les *warnings*.
+2. Avant de corriger, **inspectez** :
+
+```{r}
+#| eval: false
+res                                    # la première ligne : quel contraste ?
+sum(res$padj < 0.05, na.rm = TRUE)     # le même compte, calculé autrement
+sum(is.na(res$padj))                   # combien de gènes non testés ?
+dplyr::count(infos, cell, dex)         # le plan d'expérience
+```
+
+3. Quels soupçons de la partie A se confirment ?
+
+# Partie C : corriger
+
+1. Corrigez le script pour qu'il réponde vraiment à la demande.
+2. Pour chaque correction, ajoutez un commentaire (`#`) qui explique l'erreur.
+3. Comparez vos résultats avec ceux du script d'origine : de combien diffèrent-ils ?
+
+# Pour finir : discussion
+
+- Quelles vérifications auriez-vous dû faire **avant** de faire confiance à ce script ?
+- Les erreurs de cette semaine viennent-elles du code, des données ou du plan d'expérience ? Qui aurait dû les repérer ?
+- Qu'auriez-vous pu écrire dans la demande à l'assistant pour les éviter ?
+
+:::
+
+::: {.content-visible when-meta="corrige"}
+
+```{r}
+#| include: false
+# copies locales de /home/public/stat/airway_*.tsv
+comptes <- read_tsv("data/airway_counts.tsv", show_col_types = FALSE) |>
+  column_to_rownames("gene") |> as.matrix()
+infos <- read_tsv("data/airway_sample_info.tsv", show_col_types = FALSE) |>
+  column_to_rownames("Run")
+```
+
+# Les résultats du script d'origine
+
+```{r}
+#| warning: true
+dds <- DESeqDataSetFromMatrix(countData = comptes, colData = infos,
+                              design = ~ dex)
+dds <- dds[rowSums(counts(dds)) >= 10, ]
+dds <- DESeq(dds, quiet = TRUE)
+res <- results(dds)
+
+res_df <- as.data.frame(res)
+nrow(res_df[res_df$padj < 0.05, ])
+
+top_orig <- res_df |>
+  filter(padj < 0.05) |>
+  arrange(desc(log2FoldChange)) |>
+  head(10)
+top_orig[, c("baseMean", "log2FoldChange", "padj")]
+```
+
+Deux indices étaient visibles : le *warning* `some variables in design formula are characters, converting to factors`, et la première ligne de `res`.
+
+```{r}
+mcols(res)$description[2]
+```
+
+# Erreur 1 : la comparaison est à l'envers
+
+`dex` est du texte : DESeq2 le convertit en facteur (c'est le *warning*), avec les niveaux dans l'ordre **alphabétique**. `"trt"` vient avant `"untrt"` : le **traité** devient la référence, et le contraste est `untrt vs trt`. Un log2FoldChange **positif** signifie donc « plus exprimé **sans** traitement ».
+
+Les « 10 gènes les plus induits » du bloc 2 sont en réalité des gènes fortement **réprimés** par la dexaméthasone (voir la comparaison en fin de document). Aucune erreur, aucun signe dans les p-values : seule la première ligne de `res` le dit. On fixe la référence avant de construire l'objet :
+
+```{r}
+#| eval: false
+infos <- infos |> mutate(dex = factor(dex, levels = c("untrt", "trt")))
+```
+
+# Erreur 2 : le compte inclut les gènes non testés
+
+```{r}
+sum(is.na(res_df$padj))
+nrow(res_df[res_df$padj < 0.05, ])
+sum(res_df$padj < 0.05, na.rm = TRUE)
+nrow(filter(res_df, padj < 0.05))
+```
+
+`r sum(is.na(res_df$padj))` gènes ont une `padj` manquante (non testés : trop peu exprimés). Pour eux, `padj < 0.05` vaut `NA`, et le crochet `[ ]` de R de base **garde** ces lignes, remplies de `NA` (le piège du module 5). Le compte est gonflé de `r sum(is.na(res_df$padj))` gènes **sans aucun message**. `filter()`, `which()` ou `sum(..., na.rm = TRUE)` donnent le bon nombre.
+
+Le bloc 2, lui, utilise `filter(padj < 0.05)` : il écarte correctement les `NA`.
+
+# Erreur 3 : l'appariement est ignoré
+
+```{r}
+dplyr::count(infos, cell, dex)
+```
+
+Chaque lignée a été traitée **et** non traitée : c'est un plan **apparié**, et la demande le disait (« 4 lignées, chacune traitée ou non »). Avec `design = ~ dex`, la variabilité entre donneurs reste dans le bruit du modèle et masque une partie de l'effet. Comme pour les patients de `sleep`, on tient compte de la lignée :
+
+```{r}
+#| eval: false
+design = ~ cell + dex
+```
+
+# Ce qui était correct
+
+- `rowSums(counts(dds)) >= 10` : retirer les gènes presque jamais exprimés est une pratique standard (DESeq2 en écarte d'autres de lui-même au moment de l'ajustement).
+- L'utilisation de `padj` (et non `pvalue`) : c'est bien la p-value corrigée pour les tests multiples qu'il faut utiliser.
+- `filter(padj < 0.05)` dans le bloc 2 : il écarte correctement les gènes non testés.
+- `column_to_rownames()` : l'ordre des échantillons est vérifié par DESeq2, qui compare les noms des colonnes des comptes à ceux des lignes de `infos`.
+
+# Le commentaire « Script vérifié »
+
+« S'exécute sans erreur » est vrai, et ne prouve rien : aucune des trois erreurs n'en produit. Un assistant d'IA ne voit pas *vos* données : il ne savait pas que la colonne `dex` contenait `"trt"` et `"untrt"`, ni dans quel ordre l'alphabet les placerait. L'appariement, lui, était dans la demande, et l'assistant l'a ignoré. **Ces erreurs viennent du plan d'expérience et des données**, et seules la lecture des sorties et les vérifications sur les données les révèlent. C'est la personne qui signe l'analyse qui en est responsable.
+
+# Script corrigé
+
+```{r}
+library(tidyverse)
+library(DESeq2)
+
+comptes <- read_tsv("data/airway_counts.tsv", show_col_types = FALSE) |>
+  column_to_rownames("gene") |> as.matrix()
+infos <- read_tsv("data/airway_sample_info.tsv", show_col_types = FALSE) |>
+  column_to_rownames("Run") |>
+  # Correction 1 : le non-traité est la référence (sinon ordre alphabétique : "trt" d'abord)
+  mutate(dex = factor(dex, levels = c("untrt", "trt")),
+         cell = factor(cell))
+
+# Correction 3 : chaque lignée est son propre témoin (plan apparié)
+dds <- DESeqDataSetFromMatrix(countData = comptes, colData = infos,
+                              design = ~ cell + dex)
+dds <- dds[rowSums(counts(dds)) >= 10, ]
+dds <- DESeq(dds, quiet = TRUE)
+res <- results(dds)
+mcols(res)$description[2]    # vérification : "dex trt vs untrt"
+
+# 1. Nombre de gènes différentiellement exprimés (FDR < 5 %)
+# Correction 2 : filter() écarte les gènes non testés (padj = NA), le crochet [ ] les gardait
+res_df <- as.data.frame(res) |> rownames_to_column("gene")
+res_df |> filter(padj < 0.05) |> nrow()
+
+# 2. Les 10 gènes les plus induits par la dexaméthasone
+top_corr <- res_df |>
+  filter(padj < 0.05) |>
+  arrange(desc(log2FoldChange)) |>
+  head(10)
+top_corr[, c("gene", "baseMean", "log2FoldChange", "padj")]
+```
+
+```{r}
+#| include: false
+infos_orig <- read_tsv("data/airway_sample_info.tsv", show_col_types = FALSE) |> column_to_rownames("Run")
+dds_o <- suppressWarnings(DESeqDataSetFromMatrix(comptes, infos_orig, ~ dex))
+dds_o <- DESeq(dds_o[rowSums(counts(dds_o)) >= 10, ], quiet = TRUE)
+ro <- as.data.frame(results(dds_o))
+n_orig <- nrow(ro[ro$padj < 0.05, ])
+top_o <- ro |> rownames_to_column("gene") |> filter(padj < 0.05) |> arrange(desc(log2FoldChange)) |> head(10)
+n_corr <- sum(res_df$padj < 0.05, na.rm = TRUE)
+lfc_corr_de_top_o <- res_df$log2FoldChange[match(top_o$gene, res_df$gene)]
+communs <- length(intersect(top_o$gene, top_corr$gene))
+```
+
+# Comparaison des résultats
+
+| Résultat | Script d'origine | Script corrigé |
+|---|---|---|
+| Gènes DE (FDR < 5 %) | `r n_orig` | `r n_corr` |
+| Contraste | `dex untrt vs trt` | `dex trt vs untrt` |
+| Les « 10 plus induits » | `r communs` en commun avec la liste corrigée ; dans le bon sens, leurs log2FC vont de `r round(min(lfc_corr_de_top_o), 1)` à `r round(max(lfc_corr_de_top_o), 1)` | les 10 gènes les plus induits par la dexaméthasone |
+
+Le script d'origine annonçait des gènes « induits » qui sont en réalité parmi les plus **réprimés**, et un nombre de gènes DE gonflé par des gènes **non testés**. Une publication fondée sur ces résultats aurait conclu l'inverse de la biologie.
+
+# Vérifications systématiques pour une analyse DESeq2
+
+1. **Lire l'en-tête** de `res` : `log2 fold change (MLE): dex trt vs untrt`. Le traité doit être au numérateur.
+2. **Fixer le niveau de référence** explicitement (`factor(..., levels = )` ou `relevel()`), et ne pas laisser l'alphabet décider.
+3. **Écrire le plan d'expérience** avant le `design` : y a-t-il des appariements (donneurs, lots, souris) ? `dplyr::count(infos, cell, dex)`.
+4. **Compter avec `filter()` ou `na.rm = TRUE`** : les `NA` de `padj` sont des gènes non testés.
+5. **Utiliser `padj`**, jamais `pvalue`, pour retenir des gènes.
+6. **Lire les messages et les *warnings*** : « *converting to factors* » annonçait l'erreur 1.
+
+:::

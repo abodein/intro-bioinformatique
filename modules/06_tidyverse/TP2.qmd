@@ -1,0 +1,49 @@
+---
+title: "TP2 : résumer par groupe et changer la forme d'un tableau"
+metadata-files: [_tp.yml]
+---
+
+# Rappel
+
+```{r}
+#| eval: false
+donnees |>
+  group_by(colonne_de_groupe) |>           # par quoi découper
+  summarise(n = n(),                        # une ligne par groupe
+            moyenne = mean(x, na.rm = TRUE))
+
+donnees |> summarise(moyenne = mean(x), .by = colonne_de_groupe)   # même chose, sans groupement résiduel
+
+donnees |> pivot_longer(cols = c(a, b), names_to = "variable", values_to = "valeur")  # large -> long
+donnees |> pivot_wider(names_from = variable, values_from = valeur)                    # long -> large
+```
+
+# Partie A : les notes
+
+Reprenez le tableau `grades` du TP1 (`/home/public/tidyverse/grades.tsv`).
+
+1. Calculez la moyenne de l'examen `E2` pour chaque année.
+2. Pour chaque année **et** chaque cohorte, calculez le nombre d'étudiants et la moyenne de `E1` et de `E2`.
+3. Passez `grades` au format **long** : on veut les colonnes `ID_etu`, `Annee`, `Cohorte`, `evaluation` (le nom de l'évaluation : `D1`, `E1`…) et `note`. Assignez le résultat à `grades_long`. Combien de lignes contient-il ? Vérifiez par un calcul.
+4. À partir de `grades_long`, calculez la moyenne de **toutes** les évaluations pour chaque année, et triez de la meilleure à la moins bonne année. Une des moyennes vous surprend-elle ? Corrigez.
+5. Calculez la moyenne de chaque évaluation pour chaque année, puis présentez le résultat avec **une ligne par évaluation et une colonne par année** (`pivot_wider()`).
+
+# Partie B : les prénoms
+
+Le fichier `/home/public/tidyverse/babynames.csv` contient les prénoms donnés aux bébés nés aux États-Unis de 1880 à 2017 (près de 2 millions de lignes). Colonnes : `year`, `sex` (`F` ou `M`), `name`, `n` (nombre de bébés ayant reçu ce prénom cette année-là) et `prop` (proportion des bébés de ce sexe).
+
+6. Importez le fichier avec `read_csv()` dans la variable `baby`. Vérifiez les types.
+7. Combien de garçons ont été nommés James en 1992 ?
+8. Combien de garçons ont été nommés James entre 1992 et 2001 (inclus) ?
+9. Quel prénom a été le plus donné en 2000 ?
+10. Est-il né plus de filles ou plus de garçons en 2001 ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R. Si le résultat vous surprend, cherchez pourquoi.
+
+1. Et si on ajoutait `mutate(part = n / sum(n))` à la fin de la question 2 : à quoi correspond `part` ? Que vaut la somme des `part` ? Lisez le message affiché par `summarise()`.
+2. Et si, à la question 1, on remplaçait `summarise()` par `mutate()` : combien de lignes obtiendrait-on, et que contiendrait la nouvelle colonne ?
+3. Et si on oubliait d'exclure les colonnes d'identification à la question 3 : `pivot_longer(grades, everything(), names_to = "evaluation", values_to = "note")` ?
+4. Et si, à la question 8, on utilisait `n()` au lieu de `sum(n)` : que compterait-on ?
+5. Et si on répondait à la question 10 avec `baby |> filter(year == 2001) |> count(sex)` : la conclusion serait-elle la même ? Que compte `count()` ici ?

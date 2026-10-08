@@ -1,0 +1,62 @@
+---
+title: "TP1 : les verbes de dplyr"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+Connectez-vous au serveur RStudio du cours : <https://bif-rstudio.compbio.ulaval.ca>
+
+Ouvrez un **nouveau script** (*File > New File > R Script*) qui contiendra toutes les étapes de votre travail, et commencez par charger le *tidyverse* :
+
+```{r}
+#| eval: false
+library(tidyverse)
+```
+
+Si R répond `there is no package called 'tidyverse'`, le package n'est pas installé dans votre compte : `install.packages("tidyverse")` (une seule fois).
+
+# Les données
+
+Le fichier `/home/public/tidyverse/grades.tsv` contient les notes (anonymisées) de 79 étudiants d'un cours, sur trois années :
+
+| Colonne | Contenu |
+|---|---|
+| `ID_etu` | identifiant de l'étudiant |
+| `D1` à `D4` | notes des 4 devoirs (sur 100) |
+| `E1`, `E2` | notes des 2 examens (sur 100) |
+| `Annee` | année du cours (2018, 2019 ou 2020) |
+| `Cohorte` | `Cycle 1` ou `Cycle 2 et 3` |
+
+# Rappel : les verbes
+
+| Verbe | Rôle | Exemple |
+|---|---|---|
+| `select()` | garder des colonnes | `select(df, id, E1)` |
+| `filter()` | garder des lignes | `filter(df, E1 > 80)` |
+| `mutate()` | créer ou modifier une colonne | `mutate(df, total = D1 + D2)` |
+| `arrange()` | trier les lignes | `arrange(df, desc(E1))` |
+| `count()` | compter les lignes par valeur | `count(df, Annee)` |
+
+Chaque verbe prend un tableau et renvoie un tableau : on les enchaîne avec le *pipe* `|>` (« puis »).
+
+# À votre tour
+
+0. Importez le fichier avec `read_tsv()` et assignez-le à la variable `grades`. Lisez le message affiché : combien de lignes et de colonnes ? Quel type a été deviné pour chaque colonne ?
+1. Affichez uniquement les colonnes `ID_etu`, `E1` et `E2`.
+2. Gardez uniquement les étudiants de l'année 2019. Combien sont-ils ?
+3. Gardez les étudiants de l'année 2019 **et** de la cohorte `Cycle 1`. Combien sont-ils ?
+4. Ajoutez une colonne `moyenne_exam` qui contient la moyenne des deux examens : `(E1 + E2) / 2`.
+5. Combien d'étudiants ont obtenu plus de 90 à l'examen `E2` ?
+6. Affichez les 5 meilleures notes à l'examen `E2` (colonnes `ID_etu` et `E2` seulement), de la meilleure à la moins bonne.
+7. Combien y a-t-il d'étudiants dans chaque cohorte ? Et dans chaque année ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R. Si le résultat vous surprend, cherchez pourquoi.
+
+1. Et si on voulait les étudiants de 2019 **ou** 2020 et qu'on écrivait `filter(grades, Annee == 2019 | 2020)` : combien de lignes obtiendrait-on ? Pourquoi ? Comment l'écrire correctement ?
+2. Et si on écrivait `filter(grades, Cohorte == c("Cycle 1", "Cycle 2 et 3"))` pour garder les deux cohortes : obtient-on les 79 étudiants ? Lisez le message.
+3. Combien d'étudiants ont moins de 70 au devoir `D2` ? Combien ont 70 ou plus ? La somme fait-elle 79 ? Qui manque, et pourquoi ?
+4. Et si on exécutait `grades |> mutate(moyenne_exam = (E1 + E2) / 2)`, puis `grades$moyenne_exam` : que renvoie R ? Pourquoi ?
+5. Et si on triait par `D2` avec `arrange(D2)`, puis avec `arrange(desc(D2))` : où se trouve l'étudiant sans note de `D2` dans chacun des cas ?

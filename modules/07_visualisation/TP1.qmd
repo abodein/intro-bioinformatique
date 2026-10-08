@@ -1,0 +1,57 @@
+---
+title: "TP1 : R de base et premiers graphiques ggplot2"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+Connectez-vous au serveur RStudio du cours : <https://bif-rstudio.compbio.ulaval.ca>
+
+Ouvrez un **nouveau script** (*File > New File > R Script*) et chargez le *tidyverse*, qui contient `ggplot2` :
+
+```{r}
+#| eval: false
+library(tidyverse)
+```
+
+# Les données
+
+- `iris` (inclus dans R) : longueur et largeur des sépales et des pétales (cm) de 150 iris de 3 espèces (`Species`) ;
+- `diamonds` (inclus dans `ggplot2`) : prix (`price`), poids (`carat`), qualité de la taille (`cut`), couleur et pureté de 53 940 diamants ;
+- `/home/public/visu/fruit.tsv` : 16 lignes, une par fruit et par couleur (`FRUIT`, `COULEUR`, `QUANTITE`).
+
+# Rappel : les commandes
+
+| Objectif | Commande |
+|---|---|
+| Graphique de R de base | `plot(x, y)`, `hist(x)`, `boxplot(y ~ groupe, data = df)`, `barplot(table(x))` |
+| Légende (R de base) | `legend("topright", legend = ..., col = ..., pch = ...)` |
+| Graphique `ggplot2` | `ggplot(df, aes(x = ..., y = ...)) + geom_...()` |
+| Couleur selon une colonne | `aes(color = colonne)` ; couleur fixe : `geom_point(color = "red")` |
+| Titre, axes, thème | `labs(title = , x = , y = )`, `theme_bw()`, `theme(legend.position = "bottom")` |
+| Compter les lignes / hauteur donnée | `geom_bar()` / `geom_col()` |
+
+# À votre tour
+
+**Avec R de base**
+
+1. Tracez le boxplot de `Petal.Length` de `iris`, avec un titre.
+2. Tracez l'histogramme de `Sepal.Length` pour l'espèce `versicolor` seulement.
+3. Tracez la relation entre la longueur (`Sepal.Length`) et la largeur (`Sepal.Width`) des sépales, une couleur par espèce, avec une **légende juste**.
+
+**Avec `ggplot2`**
+
+4. Avec `diamonds`, tracez le prix (`price`, en y) selon le poids (`carat`, en x), une couleur selon `cut`. Ajoutez un titre, le thème `theme_bw()`, et placez la légende sous le graphique.
+5. Avec `iris`, refaites le graphique de la question 3 avec `ggplot2`, puis ajoutez `geom_smooth(method = "lm", se = FALSE)`. Combien de droites ? Modifiez le code pour obtenir **une seule** droite pour toutes les fleurs, en gardant les points colorés.
+6. Importez `fruit.tsv` dans `fruit`. Tracez la quantité de chaque fruit (`geom_col()`), puis le **nombre de fruits** de chaque couleur (`geom_bar()`).
+7. Sauvegardez le graphique de la question 4 dans un fichier `diamants.png` de 16 × 10 cm.
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R.
+
+1. Et si on écrivait `geom_point(aes(color = "blue"))` à la question 4 ? De quelle couleur seront les points ? Que dira la légende ?
+2. Et si on écrivait `geom_point(color = cut)` ?
+3. Et si, à la question 3, la légende était `legend = c("virginica", "versicolor", "setosa")` avec `col = 1:3` ? R le signale-t-il ?
+4. Et si on écrivait `ggplot(fruit, aes(x = FRUIT, y = QUANTITE)) + geom_bar()` ?
+5. À la question 6, quelle est la hauteur de la barre « Citron » ? Pourquoi ? Combien de barres « Rouge » dans le graphique par couleur, et quelle hauteur ?

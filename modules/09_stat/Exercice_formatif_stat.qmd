@@ -1,0 +1,195 @@
+---
+lang: fr
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 2cm
+      top: 2.6cm
+      bottom: 2.2cm
+    fontsize: 11pt
+    mainfont: "Helvetica Neue"
+    include-in-header: _ulaval.typ
+corrige: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>", message = FALSE)
+Sys.setenv(LANGUAGE = "en")
+options(width = 80, show.signif.stars = FALSE)
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : statistiques avec R]
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : statistiques avec R — corrigé]
+```
+:::
+
+::: {.content-hidden when-meta="corrige"}
+Répondez **sans exécuter de code**. Le but est de vérifier ce que vous avez compris, pas d'avoir tout juste : on corrige ensemble juste après.
+:::
+
+::: {.content-visible when-meta="corrige"}
+Chaque réponse est suivie de la notion à revoir si elle a été manquée.
+:::
+
+## 1. Lire un t-test
+
+On compare l'expression d'un gène (unités arbitraires) entre 8 souris *knock-out* (`KO`) et 8 souris sauvages (`WT`) :
+
+```
+	Welch Two Sample t-test
+
+data:  expression by genotype
+t = -2.61, df = 13.2, p-value = 0.021
+alternative hypothesis: true difference in means between group KO and group WT is not equal to 0
+95 percent confidence interval:
+ -3.91 -0.37
+sample estimates:
+mean in group KO mean in group WT
+            6.02             8.16
+```
+
+(a) Le gène est-il plus ou moins exprimé chez les KO ? De combien ? (b) Que signifie l'intervalle de confiance ? (c) Écrivez une phrase de conclusion.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.4cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) **Moins** exprimé : la différence est KO − WT (ordre alphabétique des niveaux) = 6.02 − 8.16 = −2.14. (b) La vraie différence de moyennes est, avec 95 % de confiance, entre −3.91 et −0.37 : l'effet pourrait être modeste ou assez fort, mais il est négatif. (c) *Chez les souris KO, l'expression est inférieure de 2.1 unités en moyenne (IC 95 % : 0.4 à 3.9 ; t-test de Welch, p = 0.021).* *À revoir : lire la sortie de `t.test()`, l'intervalle de confiance.*
+:::
+
+## 2. Vérifier la normalité
+
+Avec 6 valeurs par groupe, une étudiante obtient `shapiro.test()` : p = 0.31 et p = 0.58. Elle écrit : « les données sont normales, donc j'utilise un t-test ». Qu'en pensez-vous ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+p > 0.05 signifie qu'on **ne rejette pas** la normalité, pas qu'on l'a démontrée. Avec 6 valeurs, le test n'a presque aucune puissance : même des données nettement asymétriques donnent souvent p > 0.05. Il faut regarder les points (Q-Q plot, valeurs aberrantes) et, en cas de doute, utiliser un test de Wilcoxon. *À revoir : ce que Shapiro-Wilk ne dit pas.*
+:::
+
+## 3. Apparié ou non ?
+
+On mesure la pression artérielle de 15 patients avant et après un traitement. Une analyse donne p = 0.12 avec `t.test(pression ~ moment, data = df)`. (a) Quel est le problème ? (b) Que faut-il faire ? (c) Le résultat peut-il changer beaucoup ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Ce sont les **mêmes patients** : les mesures sont **appariées**, alors que la formule fait un test pour groupes indépendants. (b) Passer en format large (`pivot_wider()`, une ligne par patient) puis `t.test(apres, avant, paired = TRUE)`. (c) Oui : le test apparié retire la variabilité entre patients. Avec `sleep`, p passait de 0.08 à 0.003. *À revoir : indépendants ou appariés.*
+:::
+
+## 4. Une ANOVA suspecte
+
+Trois lignées cellulaires sont codées `1`, `2` et `3` dans une colonne numérique `lignee`. On obtient :
+
+```
+            Df Sum Sq Mean Sq F value Pr(>F)
+lignee       1   2.03   2.028   0.325  0.575
+Residuals   22 137.43   6.247
+```
+
+(a) Qu'est-ce qui cloche ? (b) Combien devrait valoir `Df` ? (c) Comment corriger ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) `Df` = 1 : `aov()` a traité `lignee` comme un **nombre** et ajusté une droite, au lieu de comparer trois groupes. (b) 3 groupes − 1 = **2**. (c) `aov(y ~ factor(lignee), data = df)`. Aucun message ne signale l'erreur ; sur l'exemple des diapos (doses codées 1, 2, 3), la version facteur donnait p < 0.001 au lieu de 0.57. *À revoir : un groupe codé en nombre.*
+:::
+
+## 5. Tests multiples
+
+On teste 20 000 gènes, au seuil de 5 %, dans une expérience où **aucun** gène ne change réellement. (a) Combien de gènes « significatifs » attendez-vous ? (b) Que fait la correction de Benjamini-Hochberg ? (c) Quelle colonne de DESeq2 faut-il utiliser ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Environ 20 000 × 0.05 = **1000**, tous faux positifs. (b) Elle ajuste les p-values pour contrôler le **FDR** : parmi les gènes retenus avec `padj` < 0.05, on accepte qu'environ 5 % soient de faux positifs ; ici, elle n'en retiendrait (presque) aucun. (c) `padj`, jamais `pvalue`. *À revoir : tests multiples.*
+:::
+
+## 6. Lire une régression
+
+```{r}
+#| echo: false
+#| comment: ""
+manchots <- read_tsv("data/penguins.tsv", show_col_types = FALSE)
+modele <- lm(body_mass ~ flipper_len, data = manchots)
+round(coef(summary(modele)), 3)
+```
+
+Ce modèle explique la masse des manchots (g) par la longueur de leur nageoire (mm), sur des nageoires de 172 à 231 mm ; R² = 0.76. (a) Interprétez la pente. (b) Que vaut le R² en mots ? (c) Peut-on prédire la masse d'un manchot dont la nageoire mesure 300 mm ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Chaque millimètre de nageoire en plus correspond à **49.7 g** de masse en plus, en moyenne. (b) La longueur de la nageoire explique 76 % de la variance de la masse. (c) Non : 300 mm est **hors de l'étendue des données**. R prédirait environ 9 kg sans avertissement, mais rien ne garantit que la relation reste linéaire. *À revoir : lire `lm()`, ne pas extrapoler.*
+:::
+
+## 7. Lire un résultat DESeq2
+
+```{r}
+#| include: false
+suppressPackageStartupMessages(library(DESeq2))
+comptes <- read_tsv("data/airway_counts.tsv", show_col_types = FALSE) |>
+  column_to_rownames("gene") |> as.matrix()
+infos <- read_tsv("data/airway_sample_info.tsv", show_col_types = FALSE) |>
+  column_to_rownames("Run") |> mutate(cell = factor(cell), dex = factor(dex))  # ordre alphabétique : trt d'abord
+dds <- DESeqDataSetFromMatrix(comptes, infos, design = ~ cell + dex)
+dds <- DESeq(dds[rowSums(counts(dds)) >= 10, ], quiet = TRUE)
+r <- results(dds)
+d <- as.data.frame(r) |> rownames_to_column("gene")
+g_rep <- d |> filter(padj < 1e-20, baseMean > 200, log2FoldChange > 2) |> arrange(padj) |> head(1)
+g_na  <- d |> filter(is.na(padj), baseMean > 3) |> head(1)
+ex <- bind_rows(filter(d, gene == "ENSG00000109906"), g_rep, g_na)
+```
+
+```{r}
+#| echo: false
+#| comment: ""
+cat(mcols(r)$description[2], "\n")
+ex |> transmute(gene, baseMean = round(baseMean, 1), log2FoldChange = round(log2FoldChange, 2),
+                padj = signif(padj, 2)) |>
+  as.data.frame() |> print(row.names = FALSE)
+```
+
+(a) Les deux premiers gènes sont-ils induits ou réprimés par la dexaméthasone (`trt`) ? (b) Que signifie le `NA` du troisième ? (c) Qu'aurait-il fallu faire avant `DESeq()` pour éviter la confusion ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.4cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) L'en-tête dit `untrt vs trt` : le non-traité **par rapport au** traité. Le premier gène (`r round(ex$log2FoldChange[1], 2)`) est donc **induit** par la dexaméthasone (environ 2^`r round(-ex$log2FoldChange[1], 1)`^ ≈ `r round(2^-ex$log2FoldChange[1])` fois) ; le deuxième (+`r round(ex$log2FoldChange[2], 2)`) est **réprimé**. (b) Le troisième **n'a pas été testé** (trop faiblement exprimé ou valeur aberrante) : on ne peut rien conclure, ce n'est pas un « non DE ». (c) Fixer le niveau de référence : `factor(dex, levels = c("untrt", "trt"))`. *À revoir : le niveau de référence, lire l'en-tête des résultats.*
+:::

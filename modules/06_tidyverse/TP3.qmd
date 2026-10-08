@@ -1,0 +1,49 @@
+---
+title: "TP3 : les jointures"
+metadata-files: [_tp.yml]
+---
+
+# Rappel
+
+```{r}
+#| eval: false
+left_join(x, y, by = "cle")                    # toutes les lignes de x, complétées par y
+left_join(x, y, by = join_by(cle_x == cle_y))  # si la clé ne porte pas le même nom
+inner_join(x, y, by = "cle")                   # seulement les lignes présentes dans les deux
+anti_join(x, y, by = "cle")                    # les lignes de x sans correspondance dans y
+```
+
+Après **chaque** jointure : comparer le nombre de lignes avant et après, chercher les clés en double (`count(cle) |> filter(n > 1)`) et les clés sans correspondance (`anti_join()`).
+
+# Partie A : les notes et le sexe
+
+Le fichier `/home/public/tidyverse/grades_sex.tsv` contient deux colonnes : `ID_etu` et `Sex`.
+
+1. Importez-le dans la variable `sexe`, puis joignez-le à `grades` (TP1) pour ajouter le sexe de chaque étudiant. Le nombre de lignes a-t-il changé ? Tous les étudiants ont-ils trouvé une correspondance ?
+2. Calculez la moyenne de l'examen `E2` et le nombre d'étudiants par année et par sexe.
+
+# Partie B : les vols au départ de New York
+
+Le package `nycflights13` contient tous les vols au départ des 3 aéroports de New York en 2013, répartis dans plusieurs tableaux reliés par des clés :
+
+```{r}
+#| eval: false
+library(nycflights13)
+flights    # un vol par ligne : carrier (code de la compagnie), dest (code de l'aéroport d'arrivée), arr_delay (retard à l'arrivée, en minutes), distance…
+airlines   # carrier -> name (nom complet de la compagnie)
+airports   # faa (code de l'aéroport) -> name, lat, lon…
+```
+
+3. Combien de compagnies aériennes différentes y a-t-il dans `airlines` ?
+4. En joignant `flights` et `airlines`, quelles sont les 3 compagnies qui ont le plus grand **retard moyen** à l'arrivée ? Affichez leur nom complet, pas leur code.
+5. Joignez `flights` et `airports` (la colonne `dest` de `flights` correspond à la colonne `faa` de `airports`). Pour chaque aéroport de destination (`name`), calculez la distance moyenne depuis New York, le retard moyen à l'arrivée et le nombre de vols. Triez du plus grand au plus petit retard moyen.
+6. Vers combien de destinations différentes peut-on voler depuis New York ? Avec `anti_join()`, trouvez les codes `dest` de `flights` qui n'existent pas dans `airports`. Combien de vols sont concernés ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R. Si le résultat vous surprend, cherchez pourquoi.
+
+1. Et si on utilisait `inner_join()` au lieu de `left_join()` à la question 5 : combien de vols disparaîtraient ? Lesquels ?
+2. Et si le tableau `sexe` contenait un étudiant **en double** (`sexe_double <- bind_rows(sexe, sexe[1, ])`) : combien de lignes aurait la jointure avec `grades` ? Obtient-on un message ? Qu'est-ce que cela change aux moyennes de la question 2 ?
+3. Et si les identifiants étaient écrits en minuscules dans `sexe` (`etu_1` au lieu de `Etu_1`) : que contiendrait la colonne `Sex` après la jointure ? Obtient-on une erreur ?
+4. Et si on joignait `flights` et `airports` sans préciser `by` : `left_join(flights, airports)` ? Et `left_join(flights, airlines)` ?

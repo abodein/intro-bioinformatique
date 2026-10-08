@@ -1,0 +1,131 @@
+---
+title: "Solutionnaire du TP3"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+```
+
+## 0. Charger le fichier
+
+```{r}
+#| eval: false
+fruit <- read.table(file = "/home/public/R/fruit.tsv", sep = "\t", header = TRUE)
+```
+
+```{r}
+#| echo: false
+# copie locale du fichier du serveur, pour le rendu du solutionnaire
+fruit <- read.table(file = "data/fruit.tsv", sep = "\t", header = TRUE)
+```
+
+```{r}
+fruit
+```
+
+## 1. Nombre de fruits différents de couleur rouge
+
+On construit un vecteur logique (`TRUE` pour les lignes rouges), puis on compte les `TRUE` avec `sum()`.
+La valeur dans le fichier est `"Rouge"` avec une majuscule : `fruit$COULEUR == "rouge"` donnerait 0.
+
+```{r}
+est_rouge <- fruit$COULEUR == "Rouge"
+sum(est_rouge)
+```
+
+Variante : on extrait les lignes, puis on compte les rangées.
+
+```{r}
+nrow(fruit[est_rouge, ])
+```
+
+## 2. Trier par quantité croissante
+
+`sort()` trie un **vecteur** et renvoie les valeurs triées : on perdrait le lien avec les noms de fruits.
+`order()` renvoie les **positions** des lignes dans l'ordre croissant, qu'on utilise comme index de lignes.
+
+```{r}
+sort(fruit$QUANTITE)   # seulement les valeurs
+order(fruit$QUANTITE)  # les positions des lignes
+fruit_trie <- fruit[order(fruit$QUANTITE), ]
+fruit_trie
+```
+
+## 3. Les 3 fruits les moins abondants
+
+```{r}
+fruit_trie[1:3, ]
+```
+
+Équivalent : `head(fruit_trie, 3)`. Remarque : plusieurs fruits ont la même quantité (1), l'ordre entre eux suit l'ordre du fichier.
+
+## 4. Nombre total de fruits
+
+```{r}
+sum(fruit$QUANTITE)
+```
+
+## 5. Nombre total de fruits rouges
+
+On réutilise le vecteur logique de la question 1 pour ne sommer que les quantités des lignes rouges.
+
+```{r}
+sum(fruit$QUANTITE[est_rouge])
+```
+
+# Et si… ?
+
+## 1. Trier avec `sort()`
+
+```{r}
+#| error: true
+sort(fruit)
+```
+
+`sort()` ne sait trier qu'un vecteur : sur un `data.frame`, R s'arrête avec une erreur.
+
+```{r}
+fruit[sort(fruit$QUANTITE), ]
+```
+
+Ici, **aucune erreur**, mais le résultat est faux : `sort()` renvoie les *valeurs* triées (`1, 1, 1, 2, ...`), que R utilise comme *numéros de rangées*. On obtient trois fois la rangée 1 (Fraise), puis des rangées sans rapport avec le tri. C'est le cas le plus dangereux : une erreur silencieuse ne se voit que si on vérifie le résultat.
+
+## 2. Du plus abondant au moins abondant
+
+```{r}
+head(fruit[order(fruit$QUANTITE, decreasing = TRUE), ], 3)
+```
+
+Équivalent : `fruit[order(-fruit$QUANTITE), ]`.
+
+## 3. `=` au lieu de `==`
+
+```{r}
+#| error: true
+#| eval: false
+fruit[fruit$COULEUR = "Rouge", ]
+```
+
+```
+Error: unexpected '=' in "fruit[fruit$COULEUR ="
+```
+
+`=` sert à assigner une valeur (comme `<-`) ou à nommer un argument ; `==` sert à **comparer**. Ici, R refuse la ligne avant même de l'exécuter : c'est une erreur de syntaxe.
+
+## 4. `"Rouge"` et `"rouge"` mélangés
+
+`tolower()` met tout en minuscules avant la comparaison :
+
+```{r}
+sum(tolower(fruit$COULEUR) == "rouge")
+```
+
+## 5. Le fruit le plus abondant
+
+```{r}
+max(fruit$QUANTITE)
+fruit[fruit$QUANTITE == max(fruit$QUANTITE), "FRUIT"]
+```
+

@@ -1,0 +1,65 @@
+---
+title: "TP1 : décrire, vérifier, comparer deux groupes"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+Connectez-vous au serveur RStudio du cours : <https://bif-rstudio.compbio.ulaval.ca>
+
+Ouvrez un **nouveau script** (*File > New File > R Script*) et chargez les packages :
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(car)        # pour leveneTest()
+```
+
+Si R répond `there is no package called 'car'` : `install.packages("car")` (une seule fois).
+
+# Les données
+
+Le fichier `/home/public/stat/penguins.tsv` décrit 344 manchots de l'archipel Palmer (Antarctique), mesurés de 2007 à 2009 :
+
+| Colonne | Contenu |
+|---|---|
+| `species` | espèce : `Adelie`, `Chinstrap` ou `Gentoo` |
+| `island` | île : `Biscoe`, `Dream` ou `Torgersen` |
+| `bill_len`, `bill_dep` | longueur et profondeur du bec (mm) |
+| `flipper_len` | longueur de la nageoire (mm) |
+| `body_mass` | masse (g) |
+| `sex` | `female` ou `male` |
+| `year` | année de la mesure |
+
+Vous utiliserez aussi `sleep`, un jeu de données inclus dans R : le sommeil gagné (`extra`, en heures) par 10 patients (`ID`) avec deux doses d'un somnifère (`group`). **Chaque patient a reçu les deux doses.**
+
+# Rappel : les commandes
+
+| Objectif | Commande |
+|---|---|
+| Résumer par groupe | `summarise(..., .by = groupe)` |
+| Q-Q plot | `ggplot(df, aes(sample = y)) + stat_qq() + stat_qq_line()` |
+| Normalité | `shapiro.test(x)` |
+| Égalité des variances | `car::leveneTest(y ~ factor(groupe), data = df)` |
+| Deux groupes indépendants | `t.test(y ~ groupe, data = df)`, `wilcox.test(y ~ groupe, data = df)` |
+| Deux mesures appariées | `t.test(apres, avant, paired = TRUE)` |
+
+# À votre tour
+
+0. Importez le fichier dans une variable `manchots`. Combien de manchots ? Combien n'ont pas de sexe connu ?
+1. Pour chaque espèce **et** chaque sexe, calculez l'effectif, la moyenne, la médiane et l'écart-type de `body_mass`.
+2. Créez `adelie` : les manchots Adélie dont le sexe est connu. Tracez l'histogramme et le Q-Q plot de `body_mass`, un panneau par sexe (`facet_wrap(~ sex)`). La normalité est-elle plausible ?
+3. Faites le test de Shapiro-Wilk pour chaque sexe, puis le test de Levene. Que concluez-vous ?
+4. Comparez la masse des mâles et des femelles Adélie avec `t.test()`. Écrivez une phrase de conclusion qui donne **la différence**, son **intervalle de confiance** et la p-value.
+5. Refaites la comparaison avec `wilcox.test()`. La conclusion change-t-elle ?
+6. Avec `sleep` : tracez un point par patient et par dose, reliés par patient (`geom_line(aes(group = ID))`). Faites le test **indépendant**, puis le test **apparié** (passez d'abord en format large avec `pivot_wider()`). Pourquoi les p-values sont-elles si différentes ? Lequel est juste ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R.
+
+1. Et si on oubliait de retirer les manchots de sexe inconnu : `t.test(body_mass ~ sex, data = filter(manchots, species == "Adelie"))`. Le résultat change-t-il ? Combien de manchots le test utilise-t-il, et R le dit-il ?
+2. Et si on voulait comparer les trois espèces avec `t.test(body_mass ~ species, data = manchots)` ? Lisez le message.
+3. Comparez la masse des Adélie et des Chinstrap. Peut-on conclure que les deux espèces ont **la même** masse ? Que dit l'intervalle de confiance ?
+4. Et si on changeait l'ordre des niveaux, `mutate(sex = factor(sex, levels = c("male", "female")))`, avant le t-test de la question 4 : qu'est-ce qui change dans la sortie ? Qu'est-ce qui ne change pas ?
+5. Et si, dans le test apparié de `sleep`, les valeurs de la dose 2 étaient dans le désordre (`sample(sommeil$dose_2)`) : R signale-t-il un problème ? Que devient la p-value ?

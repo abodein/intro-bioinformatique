@@ -1,0 +1,25 @@
+---
+title: "TP3 : manipuler un data.frame"
+metadata-files: [_tp.yml]
+---
+
+Le fichier `fruit.tsv` contient des fruits, leurs couleurs et une quantité associée.
+Quelles sont les commandes qui vous permettent de répondre aux questions suivantes ?
+
+0. Chargez le fichier `/home/public/R/fruit.tsv` dans un `data.frame`.
+1. Combien y a-t-il de fruits différents dont la couleur est **Rouge** ? (Attention : R distingue les majuscules des minuscules.)
+2. En utilisant la fonction `order()`, triez le `data.frame` par ordre croissant de quantité.
+3. À partir du `data.frame` trié, récupérez les 3 fruits les moins abondants.
+4. En utilisant la quantité associée à chaque fruit et la fonction `sum()`, combien y a-t-il de fruits au total ?
+5. En utilisant la quantité associée à chaque fruit et la fonction `sum()`, combien y a-t-il de fruits **rouges** au total ?
+
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R. Si le résultat vous surprend, cherchez pourquoi.
+
+1. Et si on essayait de trier avec `sort()` : que donnent `sort(fruit)` et `fruit[sort(fruit$QUANTITE), ]` ? Lequel des deux est le plus dangereux ?
+2. Et si on voulait les fruits du **plus** abondant au moins abondant ?
+3. Et si on écrivait `=` au lieu de `==` : `fruit[fruit$COULEUR = "Rouge", ]` ?
+4. Et si le fichier contenait à la fois `"Rouge"` et `"rouge"` : comment compter tous les fruits rouges ? (Indice : `tolower()`.)
+5. Quel est le fruit le plus abondant ? Trouvez-le sans trier, avec `max()`.

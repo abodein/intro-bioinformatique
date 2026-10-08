@@ -1,0 +1,82 @@
+/*-- scss:defaults --*/
+
+// Couleurs Université Laval (mêmes valeurs que les diapos)
+$rouge-ul: #E30513;
+$jaune-ul: #FFC103;
+$gris-ul: #515151;
+
+$primary: $rouge-ul;
+$link-color: $rouge-ul;
+$body-color: #222222;
+$headings-color: #222222;
+$code-color: $rouge-ul;
+$code-block-bg: #F6F6F6;
+$font-size-root: 17px;
+
+/*-- scss:rules --*/
+
+// Conserver les couleurs à l'impression (export PDF par Chrome)
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+// Bandeau rouge | jaune en haut de page, comme sur les diapos
+.ul-bandeau {
+  height: 12px;
+  background: linear-gradient(90deg, $rouge-ul 50%, $jaune-ul 50%);
+  margin: 0 0 0.8rem;
+}
+.ul-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  color: $gris-ul;
+  font-size: 0.85rem;
+}
+.ul-logo { height: 46px; }
+
+// Titre dans un cartouche jaune arrondi avec ombre
+#title-block-header {
+  background: $jaune-ul;
+  border-radius: 14px;
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+  padding: 1.1rem 1.5rem;
+  margin: 1rem 0 2rem;
+  text-align: center;
+  .title { font-weight: 400; margin: 0; color: #222222; }
+  .subtitle { margin-top: 0.3rem; }
+}
+
+// Titres de section : filet jaune (comme les titres de diapos)
+h1:not(.title) {
+  border-bottom: 3px solid $jaune-ul;
+  padding-bottom: 0.2rem;
+  margin-top: 2.2rem;
+  font-size: 1.7rem;
+}
+h2 {
+  border-left: 5px solid $rouge-ul;
+  padding-left: 0.5rem;
+  font-size: 1.3rem;
+  margin-top: 1.6rem;
+  border-bottom: none;
+}
+
+// Code : filet jaune à gauche
+div.sourceCode, pre {
+  border-left: 4px solid $jaune-ul;
+  border-radius: 4px;
+}
+
+// Sommaire aux couleurs UL
+#TOC .nav-link.active, #TOC a.active { color: $rouge-ul; border-left-color: $rouge-ul; }
+
+// Bandeau inverse en pied de page
+main::after {
+  content: "";
+  display: block;
+  height: 12px;
+  margin-top: 3rem;
+  background: linear-gradient(90deg, $rouge-ul 66%, $jaune-ul 66%);
+}

@@ -1,0 +1,207 @@
+---
+title: "Activité : auditer un script ggplot2 généré par IA"
+metadata-files: [_tp.yml]
+corrige: false
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages(library(tidyverse))
+knitr::opts_chunk$set(fig.width = 8, fig.height = 4, out.width = "85%", dpi = 110)
+```
+
+::: {.content-visible when-meta="corrige"}
+::: {.callout-important}
+**Corrigé.** Réservé à la correction en classe : à déposer après la séance.
+:::
+:::
+
+**Activité formative, non notée**
+
+# Contexte
+
+L'équipe pédagogique veut comparer les deux cohortes d'étudiants du cours (`Cycle 1` et `Cycle 2 et 3`). Elle dispose du fichier `grades.tsv` du module 6 : une ligne par étudiant, `ID_etu`, les notes sur 100 de six évaluations dans l'ordre du trimestre (`D1`, `D2`, `E1`, `D3`, `D4`, `E2`), `Annee` et `Cohorte`.
+
+Elle a demandé à un assistant d'IA :
+
+> *« À partir de grades.tsv, compare les deux cohortes : (1) la distribution des notes de chaque évaluation, dans l'ordre du trimestre (D1, D2, E1, D3, D4, E2) ; (2) un barplot de la note moyenne de chaque cohorte. Les notes sont sur 100. »*
+
+Voici le script obtenu. Il a été écrit pour cet exercice, dans le style d'un assistant d'IA. **Il s'exécute sans aucune erreur.**
+
+```{r}
+#| eval: false
+library(tidyverse)
+# Script vérifié : s'exécute sans erreur.
+notes <- read_tsv("/home/public/tidyverse/grades.tsv")
+
+notes_long <- notes |>
+  pivot_longer(D1:E2, names_to = "Type", values_to = "Note")
+
+# 1. Distribution des notes par évaluation et par cohorte
+ggplot(notes_long, aes(x = Type, y = Note, fill = Cohorte)) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(50, 100)) +   # les notes sont sur 100
+  theme_bw()
+
+# 2. Note moyenne par cohorte
+ggplot(notes_long, aes(x = Cohorte, y = Note, fill = "steelblue")) +
+  geom_col() +
+  labs(y = "Note moyenne")
+```
+
+Le script contient **au moins 3 erreurs**. Aucune ne produit d'erreur : les graphiques ont l'air normaux, mais ils sont faux ou ne répondent pas à la demande. Attention, certaines lignes sont **correctes** : ne corrigez que ce qui doit l'être.
+
+::: {.content-hidden when-meta="corrige"}
+
+# Partie A : lire sans exécuter
+
+1. Pour chaque bloc, écrivez en une phrase ce que le code est **censé** faire, puis ce qu'il fait **réellement**.
+2. Relisez la **demande** : dans quel ordre les évaluations apparaîtront-elles sur le graphique 1 ?
+3. Que fait `scale_y_continuous(limits = c(50, 100))` d'une note de 35 ? Le commentaire qui l'accompagne est-il juste ?
+4. Dans le graphique 2, combien de lignes de `notes_long` tombent dans chaque barre ? Que fait `geom_col()` de ces lignes ? Quel ordre de grandeur attendez-vous sur l'axe y ?
+5. De quelle couleur seront les barres du graphique 2 ? Que dira la légende ?
+6. Le commentaire affirme « Script vérifié ». Qu'en pensez-vous ?
+
+# Partie B : vérifier dans RStudio
+
+1. Exécutez le script. Lisez **tous** les messages, y compris les *warnings*, et regardez les **axes** et les **légendes**.
+2. Avant de corriger, **calculez** ce que les graphiques devraient montrer :
+
+```{r}
+#| eval: false
+notes_long |> summarise(moyenne = mean(Note, na.rm = TRUE), n = n(), .by = Cohorte)
+notes_long |> summarise(sous_50 = sum(Note < 50, na.rm = TRUE), manquantes = sum(is.na(Note)))
+notes_long |> summarise(mediane = median(Note, na.rm = TRUE), .by = c(Type, Cohorte))
+```
+
+3. Quels soupçons de la partie A se confirment ?
+
+# Partie C : corriger
+
+1. Corrigez le script pour qu'il réponde vraiment à la demande.
+2. Pour chaque correction, ajoutez un commentaire (`#`) qui explique l'erreur.
+3. Pour le graphique 2, un barplot est-il vraiment le meilleur choix ? Proposez une alternative.
+
+# Pour finir : discussion
+
+- Lesquelles de ces erreurs se voyaient **sur le graphique**, et lesquelles seulement dans les messages ou en refaisant les calculs ?
+- Le commentaire `# les notes sont sur 100` donnait-il confiance ? Avait-il raison ?
+- Qu'auriez-vous pu écrire dans la demande à l'assistant pour éviter ces erreurs ?
+
+:::
+
+::: {.content-visible when-meta="corrige"}
+
+```{r}
+#| include: false
+# copie locale de /home/public/tidyverse/grades.tsv
+notes <- read_tsv("data/grades.tsv", show_col_types = FALSE)
+notes_long <- notes |>
+  pivot_longer(D1:E2, names_to = "Type", values_to = "Note")
+```
+
+# Les graphiques du script d'origine
+
+```{r}
+#| warning: true
+ggplot(notes_long, aes(x = Type, y = Note, fill = Cohorte)) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(50, 100)) +
+  theme_bw()
+
+ggplot(notes_long, aes(x = Cohorte, y = Note, fill = "steelblue")) +
+  geom_col() +
+  labs(y = "Note moyenne")
+```
+
+Trois indices étaient visibles sans rien calculer : le *warning* `Removed 22 rows`, l'axe y du graphique 2 (des **milliers**, pour des notes sur 100), et la légende « steelblue ».
+
+# Erreur 1 : `limits` retire des notes
+
+```{r}
+notes_long |> summarise(sous_50 = sum(Note < 50, na.rm = TRUE), manquantes = sum(is.na(Note)))
+notes_long |>
+  summarise(mediane = median(Note, na.rm = TRUE),
+            mediane_sup50 = median(Note[Note >= 50], na.rm = TRUE), .by = Type)
+```
+
+`limits` dans une échelle ne zoome pas : il **supprime** les valeurs hors limites **avant** le calcul des boxplots. Les `r sum(notes_long$Note < 50, na.rm = TRUE)` notes sous 50 (les échecs !) disparaissent ; médianes, quartiles et moustaches sont calculés sans elles. Pour `E2`, la médiane passe de `r median(notes_long$Note[notes_long$Type == "E2"])` à `r round(median(notes_long$Note[notes_long$Type == "E2" & notes_long$Note >= 50]), 2)`. Seul le *warning* (`Removed 22 rows` : 21 notes sous 50 et 1 `NA`) le signale.
+
+Le commentaire `# les notes sont sur 100` est juste… et hors sujet : il justifie la borne haute, mais la borne **basse** à 50 n'a aucune raison d'être. Si on veut fixer l'axe de 0 à 100, `limits = c(0, 100)` ne retire rien ; pour zoomer, `coord_cartesian(ylim = )`.
+
+# Erreur 2 : les évaluations ne sont pas dans l'ordre du trimestre
+
+`Type` est du texte : `ggplot2` le trie par ordre **alphabétique**, D1, D2, D3, D4, E1, E2. La demande précisait l'ordre du trimestre (D1, D2, **E1**, D3, D4, E2). Les deux examens se retrouvent côte à côte à la fin. On fixe l'ordre avec un facteur :
+
+```{r}
+#| eval: false
+mutate(Type = fct_inorder(Type))   # ou factor(Type, levels = c("D1", "D2", "E1", "D3", "D4", "E2"))
+```
+
+# Erreur 3 : le barplot montre des sommes, pas des moyennes
+
+```{r}
+notes_long |>
+  summarise(somme = sum(Note, na.rm = TRUE), moyenne = mean(Note, na.rm = TRUE), n = n(), .by = Cohorte)
+```
+
+Chaque cohorte compte plus de 200 lignes dans `notes_long`. `geom_col()` **empile** toutes les lignes qui ont le même `x` : chaque barre est la **somme** des notes (~20 000), pas leur moyenne, malgré le titre de l'axe. Pire, la somme dépend de l'**effectif** : l'écart entre cohortes paraît faible (4 %), alors que la différence de moyennes est de presque 10 points. Il faut calculer la moyenne d'abord, avec `summarise()`, puis `geom_col()` ; ou utiliser `stat_summary(fun = mean, geom = "col")`.
+
+# Erreur 4 : une couleur fixe placée dans `aes()`
+
+Dans `aes()`, `"steelblue"` n'est pas une couleur mais **une donnée** (une colonne constante) : les barres prennent la première couleur de la palette (rouge saumon), et une légende inutile annonce « steelblue ». Une couleur fixe se met **hors** de `aes()` : `geom_col(fill = "steelblue")`.
+
+# Ce qui était correct
+
+- `pivot_longer(D1:E2, names_to = "Type", values_to = "Note")` : le passage au format long est juste et nécessaire.
+- `aes(x = Type, y = Note, fill = Cohorte)` + `geom_boxplot()` : le bon graphique pour comparer des distributions.
+- `theme_bw()` : un choix d'apparence, sans effet sur les données.
+
+# Le commentaire « Script vérifié »
+
+« S'exécute sans erreur » est vrai, et ne prouve rien : aucune des quatre erreurs n'en produit. Deux se voyaient pourtant en **lisant le graphique** (un axe en milliers pour des notes sur 100, une légende « steelblue »), une seulement en **lisant le warning** (les notes retirées), et une en **relisant la demande** (l'ordre). Un assistant d'IA ne regarde pas le graphique qu'il produit : c'est à la personne qui le présente de le lire.
+
+# Script corrigé
+
+```{r}
+library(tidyverse)
+
+notes_long <- notes |>
+  pivot_longer(D1:E2, names_to = "Type", values_to = "Note") |>
+  # Correction 2 : l'ordre du trimestre (sinon alphabétique : D1, D2, D3, D4, E1, E2)
+  mutate(Type = fct_inorder(Type))
+
+# 1. Distribution des notes par évaluation et par cohorte
+ggplot(notes_long, aes(x = Type, y = Note, fill = Cohorte)) +
+  geom_boxplot() +
+  # Correction 1 : limits retirait les notes < 50 avant le calcul ; on fixe l'axe sans rien retirer
+  coord_cartesian(ylim = c(0, 100)) +
+  theme_bw()
+
+# 2. Note moyenne par cohorte
+moyennes <- notes_long |>
+  # Correction 3 : calculer la moyenne d'abord (geom_col() additionnait les ~240 notes de chaque cohorte)
+  summarise(moyenne = mean(Note, na.rm = TRUE), .by = Cohorte)
+
+ggplot(moyennes, aes(x = Cohorte, y = moyenne)) +
+  # Correction 4 : couleur fixe hors de aes() (dans aes(), "steelblue" était une donnée)
+  geom_col(fill = "steelblue", width = 0.5) +
+  labs(y = "Note moyenne (sur 100)")
+```
+
+# Mieux qu'un barplot
+
+Le barplot de deux moyennes cache tout ce qui intéresse l'équipe : la dispersion, les échecs, les effectifs. Les points de chaque étudiant, avec la moyenne, en disent beaucoup plus :
+
+```{r}
+moyennes_etu <- notes_long |>
+  summarise(moyenne = mean(Note, na.rm = TRUE), .by = c(ID_etu, Cohorte))
+
+ggplot(moyennes_etu, aes(x = Cohorte, y = moyenne)) +
+  geom_jitter(width = 0.15, alpha = 0.6) +
+  stat_summary(fun = mean, geom = "crossbar", width = 0.4, color = "red") +
+  labs(y = "Moyenne de l'étudiant (sur 100)")
+```
+
+:::

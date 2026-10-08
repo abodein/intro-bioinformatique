@@ -1,0 +1,191 @@
+---
+lang: fr
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 2cm
+      top: 2.6cm
+      bottom: 2.2cm
+    fontsize: 11pt
+    mainfont: "Helvetica Neue"
+    include-in-header: _ulaval.typ
+corrige: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>")
+Sys.setenv(LANGUAGE = "en")
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : introduction à R]
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : introduction à R — corrigé]
+```
+:::
+
+::: {.content-hidden when-meta="corrige"}
+Répondez **sans exécuter le code**. Le but est de vérifier ce que vous avez compris, pas d'avoir tout juste : on corrige ensemble juste après.
+:::
+
+::: {.content-visible when-meta="corrige"}
+Chaque réponse est suivie de la notion à revoir si elle a été manquée.
+:::
+
+## 1. Indexer un vecteur
+
+```r
+x <- c(3, 8, 1, 6)
+```
+
+Que renvoient : (a) `x[2]` (b) `x[c(1, 3)]` (c) `x > 4` (d) `x[x > 4]` ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+x <- c(3, 8, 1, 6)
+x[2]
+x[c(1, 3)]
+x > 4
+x[x > 4]
+```
+*À revoir : indexation par position et par vecteur logique.*
+:::
+
+## 2. Types
+
+Quel est le résultat de `class(c(1, "a", TRUE))` ? Pourquoi ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+class(c(1, "a", TRUE))
+```
+Un vecteur ne contient qu'un seul type : R convertit tout vers le type le plus général, ici le texte (`"1"`, `"a"`, `"TRUE"`).
+*À revoir : types de scalaires, conversion automatique.*
+:::
+
+## 3. Recyclage
+
+Que renvoie `1:6 + c(10, 20)` ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.5cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+1:6 + c(10, 20)
+```
+Le vecteur court est répété (recyclé) : `10, 20, 10, 20, 10, 20`.
+*À revoir : opérations sur les vecteurs.*
+:::
+
+## 4. Valeurs manquantes
+
+`mean(c(2, 4, NA))` renvoie `NA`. Pourquoi ? Comment obtenir la moyenne de 2 et 4 ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+mean(c(2, 4, NA))
+mean(c(2, 4, NA), na.rm = TRUE)
+```
+Une valeur inconnue rend la moyenne inconnue. L'argument `na.rm = TRUE` retire les `NA` avant le calcul (voir `?mean`).
+*À revoir : `NA`, arguments d'une fonction.*
+:::
+
+## 5. Sélectionner des lignes
+
+Le `data.frame` `fruit` contient :
+
+```
+   FRUIT COULEUR QUANTITE
+  Fraise   Rouge       10
+  Banane   Jaune        5
+   Kiwi     Vert        2
+  Cerise   Rouge        3
+```
+
+(a) Que renvoie `fruit[fruit$QUANTITE > 4, "FRUIT"]` ?
+(b) `fruit[fruit$COULEUR == "rouge", ]` ne renvoie aucune ligne. Pourquoi ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.4cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+fruit <- data.frame(FRUIT = c("Fraise", "Banane", "Kiwi", "Cerise"),
+                    COULEUR = c("Rouge", "Jaune", "Vert", "Rouge"),
+                    QUANTITE = c(10, 5, 2, 3))
+fruit[fruit$QUANTITE > 4, "FRUIT"]
+fruit[fruit$COULEUR == "rouge", ]
+```
+(b) R distingue les majuscules : la valeur est `"Rouge"`, aucune ligne ne vaut `"rouge"`.
+*À revoir : `data.frame`, `$`, sélection `[lignes, colonnes]`.*
+:::
+
+## 6. `sort()` ou `order()` ?
+
+```r
+q <- c(5, 2, 9)
+```
+
+Que renvoient `sort(q)` et `order(q)` ? Lequel utiliser pour trier les lignes d'un `data.frame` ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+q <- c(5, 2, 9)
+sort(q)
+order(q)
+```
+`sort()` renvoie les valeurs triées ; `order()` renvoie leurs **positions**, qu'on utilise comme index de lignes : `fruit[order(fruit$QUANTITE), ]`.
+*À revoir : TP3, question 2.*
+:::
+
+## 7. Lire un message d'erreur
+
+Un étudiant tape `Mean(c(1, 2))` et obtient `Error in Mean(c(1, 2)) : could not find function "Mean"`. Que s'est-il passé ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.6cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+La fonction s'appelle `mean` (minuscule) : R ne trouve aucune fonction nommée `Mean`. Le même message apparaît quand une fonction vient d'un package qui n'a pas été chargé avec `library()`.
+*À revoir : lire un message d'erreur, packages.*
+:::

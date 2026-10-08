@@ -1,0 +1,192 @@
+/*-- scss:defaults --*/
+
+// Couleurs Université Laval (reprises de l'ancien thème beamer)
+$rouge-ul: #E30513;
+$jaune-ul: #FFC103;
+$gris-ul: #515151;
+
+$body-bg: #FFFFFF;
+$body-color: #222222;
+$link-color: $rouge-ul;
+$presentation-heading-color: #222222;
+$presentation-font-size-root: 30px;
+$presentation-h2-font-size: 1.45em;
+$code-block-font-size: 0.72em;
+$code-color: $rouge-ul;
+
+/*-- scss:rules --*/
+
+// Barre jaune sous les titres de diapo
+.reveal h2 {
+  border-bottom: 4px solid $jaune-ul;
+  padding-bottom: 0.15em;
+}
+
+// Diapos de section (# Titre)
+.reveal section.title-slide h1,
+.reveal .level1 > h1 {
+  color: $rouge-ul;
+}
+
+// Pauses « À vous » : bandeau rouge bien visible
+.reveal section.a-vous h2 {
+  color: $rouge-ul;
+  border-bottom-color: $rouge-ul;
+}
+.reveal section.a-vous h2::before {
+  content: "✋ ";
+}
+
+.reveal .remarque {
+  border-left: 5px solid $jaune-ul;
+  padding: 0.2em 0.6em;
+  background: #FFF8E1;
+  font-size: 0.85em;
+}
+
+.reveal .legende {
+  font-size: 0.55em;
+  color: $gris-ul;
+  text-align: center;
+}
+
+// ---- Page de titre, inspirée de l'ancien thème beamer AnnArbor ----
+#title-slide {
+  text-align: center;
+  // occupe toute la hauteur de la diapo pour placer les bandeaux aux bords
+  top: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 150px;   // laisse la place au logo
+  box-sizing: border-box;
+
+  // bandeaux haut (rouge | jaune) et bas (rouge | jaune)
+  &::before, &::after {
+    content: "";
+    position: absolute;
+    left: -40px;
+    right: -40px;
+    height: 22px;
+  }
+  &::before { top: 0; background: linear-gradient(90deg, $rouge-ul 50%, $jaune-ul 50%); }
+  &::after  { bottom: 0; background: linear-gradient(90deg, $rouge-ul 66%, $jaune-ul 66%); }
+
+  // cartouche jaune : un seul bloc (le titre) porte fond, arrondi et ombre ;
+  // le sous-titre, transparent, se loge dans sa marge basse (aucune jonction visible)
+  .title {
+    background: $jaune-ul;
+    color: #222222;
+    width: 80%;
+    box-sizing: border-box;
+    margin: 0 auto !important;
+    padding: 0.5em 0.5em 1.9em;
+    border-radius: 16px;
+    box-shadow: 6px 6px 10px rgba(0, 0, 0, 0.25);
+    font-family: inherit;
+    font-size: 1.7em;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  .subtitle {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    color: #222222;
+    font-size: 0.95em;
+    margin: -2.9em auto 0 !important;
+    padding-bottom: 1.3em;
+  }
+
+  .quarto-title-authors { margin-top: 1.4em; justify-content: center; }
+  .quarto-title-author-name { font-size: 0.95em; }
+  .date { margin-top: 1em; font-size: 0.85em; color: $gris-ul; }
+}
+
+// pas de petit logo en bas à droite sur la page de titre (le grand logo y est déjà)
+.reveal:has(#title-slide.present) .slide-logo { display: none !important; }
+
+// Diapo d'audit : script et données côte à côte
+.reveal section.audit {
+  blockquote { font-size: 0.7em; margin: 0.2em 0 0.4em; padding: 0.2em 0.8em; width: 100%; box-sizing: border-box; }
+  // une seule réduction de police (sur pre), même taille pour le script et les données
+  div.sourceCode { font-size: 1em; margin: 0; }
+  pre { font-size: 0.56em; margin: 0; width: 100%; box-sizing: border-box;
+        background: #F6F6F6; border: 1px solid #E0E0E0; border-radius: 4px; }
+  pre code { max-height: none; }
+  p { font-size: 0.85em; margin-top: 0.4em; }
+}
+.reveal section.audit .legende { display: block; margin: 0 0 0.2em; font-size: 0.5em; }
+// Bloc des données en jaune pâle, pour le distinguer du script
+.reveal section.audit .donnees pre,
+.reveal section.audit .donnees pre code { background: #FFF8E1 !important; }
+.reveal section.audit .donnees pre { border-color: $jaune-ul; }
+.reveal section.audit .demarche { font-size: 0.72em; }
+.reveal section.audit .demarche ol { margin-top: 0.2em; }
+.reveal section.audit .demarche li { margin: 0.1em 0; }
+
+// Diapos d'exercices (version avec TP intégrés)
+.reveal section.tp h2::before { content: "💻 "; }
+.reveal section.tp ol { font-size: 1em; }
+.reveal section.tp ol li { margin: 0.35em 0; }
+
+// ---- Diapos de section : fond rouge, numéro + barre blanche, titre en majuscules à gauche ----
+.reveal section.section-ul {
+  top: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
+  padding-left: 40px !important;
+  box-sizing: border-box;
+
+  // grand numéro précédé d'une barre blanche verticale
+  &[data-numero]::before {
+    content: attr(data-numero);
+    display: block;
+    color: #FFFFFF;
+    font-family: $presentation-heading-font;
+    font-weight: 700;
+    font-size: 11em;
+    line-height: 0.9;
+    border-left: 14px solid #FFFFFF;
+    padding: 0.05em 0 0.05em 0.45em;
+    margin-bottom: 0.12em;
+  }
+
+  h1 {
+    color: #FFFFFF !important;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 3.4em;
+    letter-spacing: 0.02em;
+    text-align: left;
+    margin: 0;
+    code { color: #FFFFFF; background: transparent; text-transform: none; }
+  }
+}
+
+// Sur fond rouge : pas de logo, numéro de diapo et menu en blanc
+.reveal:has(section.section-ul.present) {
+  .slide-logo { display: none !important; }
+  .slide-number, .slide-menu-button a { color: #FFFFFF !important; background: transparent !important; }
+}
+// À l'impression (export PDF), reveal.js place les diapos en JavaScript et ignore le centrage flex :
+// on centre le bloc avec une marge haute fixe (diapos de 800 px de haut)
+html.print-pdf .reveal section.section-ul { display: block !important; height: auto !important; padding-top: 170px !important; }
+html.print-pdf .reveal section.section-ul:not([data-numero]) { padding-top: 330px !important; }
+
+// Diapos de correction des TP : questions compactes, réponse au clic juste en dessous
+.reveal section.corr {
+  h2::before { content: "✅ "; }
+  p { font-size: 0.85em; margin: 0.3em 0 0.1em; }
+  div.sourceCode { margin: 0 0 0.15em; }
+  pre { font-size: 0.7em; margin: 0; }
+  pre code { max-height: none; white-space: pre-wrap; word-break: break-word; }
+}
+// Aperçu des données sur la diapo de chargement du TP2
+.reveal section.apercu { p { font-size: 0.85em; margin: 0.35em 0; } pre { font-size: 0.62em; margin: 0.15em 0; } }

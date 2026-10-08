@@ -1,0 +1,166 @@
+---
+title: "Solutionnaire du TP1"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(car)})
+theme_set(theme_minimal())
+knitr::opts_chunk$set(fig.width = 7, fig.height = 3.5, out.width = "85%")
+```
+
+# À votre tour
+
+## 0. Importer les données
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(car)
+manchots <- read_tsv("/home/public/stat/penguins.tsv")
+```
+
+```{r}
+#| echo: false
+#| message: true
+# copie locale de /home/public/stat/penguins.tsv
+manchots <- read_tsv("data/penguins.tsv")
+```
+
+```{r}
+nrow(manchots)
+count(manchots, sex)
+```
+
+344 manchots, dont `r sum(is.na(manchots$sex))` de sexe inconnu (`NA`).
+
+## 1. Décrire par espèce et par sexe
+
+```{r}
+manchots |>
+  summarise(n = n(),
+            moyenne = mean(body_mass, na.rm = TRUE),
+            mediane = median(body_mass, na.rm = TRUE),
+            ecart_type = sd(body_mass, na.rm = TRUE),
+            .by = c(species, sex))
+```
+
+Dans chaque espèce, les mâles sont plus lourds. Moyenne et médiane sont proches : pas d'asymétrie marquée. Les lignes `NA` regroupent les manchots de sexe inconnu.
+
+## 2. Visualiser la normalité
+
+```{r}
+adelie <- manchots |> filter(species == "Adelie", !is.na(sex))
+
+ggplot(adelie, aes(body_mass)) +
+  geom_histogram(bins = 15) +
+  facet_wrap(~ sex)
+
+ggplot(adelie, aes(sample = body_mass)) +
+  stat_qq() + stat_qq_line() +
+  facet_wrap(~ sex)
+```
+
+Les points suivent la droite dans les deux groupes, à part de légers écarts aux extrémités : la normalité est plausible.
+
+## 3. Shapiro-Wilk et Levene
+
+```{r}
+adelie |> summarise(p_shapiro = shapiro.test(body_mass)$p.value, .by = sex)
+leveneTest(body_mass ~ factor(sex), data = adelie)
+```
+
+Shapiro-Wilk : p > 0.05 dans les deux groupes, on ne rejette pas la normalité (avec 73 manchots par groupe, le t-test serait de toute façon robuste). Levene : p ≈ 0.05, à la limite. Le t-test de Welch, utilisé par défaut, ne suppose pas l'égalité des variances : il convient.
+
+## 4. Le t-test
+
+```{r}
+t.test(body_mass ~ sex, data = adelie)
+```
+
+```{r}
+#| include: false
+tt <- t.test(body_mass ~ sex, data = adelie)
+```
+
+*Les femelles Adélie pèsent en moyenne `r round(-diff(tt$estimate))` g de moins que les mâles (IC 95 % : `r round(-tt$conf.int[2])` à `r round(-tt$conf.int[1])` g ; t-test de Welch, p < 0.001).*
+
+La sortie compare `female` − `male` (ordre alphabétique des niveaux), d'où les valeurs négatives de l'intervalle.
+
+## 5. Wilcoxon
+
+```{r}
+wilcox.test(body_mass ~ sex, data = adelie, exact = FALSE)
+```
+
+Même conclusion : la différence est nette, quel que soit le test. Quand les conditions du t-test sont réunies, les deux tests concordent ; c'est surtout avec de petits effectifs ou des valeurs aberrantes qu'ils peuvent diverger.
+
+## 6. Données appariées : `sleep`
+
+```{r}
+ggplot(sleep, aes(group, extra)) +
+  geom_line(aes(group = ID), colour = "grey60") +
+  geom_point(size = 2)
+```
+
+```{r}
+# indépendant : faux ici
+t.test(extra ~ group, data = sleep)$p.value
+
+# apparié : on aligne d'abord les deux mesures de chaque patient
+sommeil <- sleep |>
+  pivot_wider(names_from = group, values_from = extra, names_prefix = "dose_")
+sommeil
+t.test(sommeil$dose_2, sommeil$dose_1, paired = TRUE)
+```
+
+Le test **apparié** est le bon : chaque patient a reçu les deux doses. Il teste les 10 différences individuelles (moyenne 1.58 h), et la variabilité entre patients, très grande, disparaît. Le test indépendant compare deux nuages de points où cette variabilité noie l'effet : p = 0.08 au lieu de 0.003.
+
+# Et si… ?
+
+## 1. Oublier les sexes inconnus
+
+```{r}
+t.test(body_mass ~ sex, data = filter(manchots, species == "Adelie"))$p.value
+filter(manchots, species == "Adelie") |> count(sex)
+```
+
+Le résultat est **identique** : la formule `body_mass ~ sex` écarte les lignes où `sex` vaut `NA`, **sans aucun message**. Le test porte sur 146 manchots et non 152. Ici sans conséquence, mais il faut toujours savoir **combien d'observations** un test a réellement utilisées.
+
+## 2. Trois espèces dans `t.test()`
+
+```{r}
+#| error: true
+t.test(body_mass ~ species, data = manchots)
+```
+
+`grouping factor must have exactly 2 levels` : un t-test compare **deux** groupes. Pour trois espèces, c'est une ANOVA (TP2).
+
+## 3. Adélie contre Chinstrap
+
+```{r}
+t.test(body_mass ~ species, data = filter(manchots, species %in% c("Adelie", "Chinstrap")))
+```
+
+p = 0.59 : on **ne rejette pas** H0. Mais on ne peut pas conclure que les masses sont **égales** : l'absence de preuve n'est pas la preuve de l'absence. L'intervalle de confiance dit ce qu'on sait vraiment : la différence (Adélie − Chinstrap) est quelque part entre −150 et +86 g. Des différences de l'ordre de 100 g restent compatibles avec les données.
+
+## 4. Changer l'ordre des niveaux
+
+```{r}
+adelie |>
+  mutate(sex = factor(sex, levels = c("male", "female"))) |>
+  t.test(body_mass ~ sex, data = _)
+```
+
+La différence est maintenant **mâles − femelles** : la statistique t et l'intervalle de confiance changent de **signe**. La p-value, elle, ne change pas. C'est le même mécanisme que le niveau de référence dans `lm()` et DESeq2 (TP2 et TP3) : **le premier niveau sert de référence**, et il faut le savoir pour lire le signe d'un effet.
+
+## 5. Des paires dans le désordre
+
+```{r}
+set.seed(1)
+t.test(sample(sommeil$dose_2), sommeil$dose_1, paired = TRUE)$p.value
+```
+
+**Aucun message** : R apparie la 1^re^ valeur avec la 1^re^, la 2^e^ avec la 2^e^… sans savoir à quel patient elles appartiennent. Les différences calculées n'ont plus de sens, et la p-value passe de 0.003 à une valeur non significative. C'est pourquoi on aligne les paires avec `pivot_wider()` sur la colonne `ID`, plutôt que d'extraire deux vecteurs séparément.

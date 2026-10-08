@@ -1,0 +1,127 @@
+---
+title: "Guide d'étude : introduction à R"
+subtitle: "Ce qu'il faut savoir faire pour les oraux et l'évaluation sur table"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+```
+
+# Pourquoi ce module, à l'ère de l'IA
+
+Les assistants d'IA générative écrivent aujourd'hui du code R en quelques secondes. Ce module ne cherche donc pas à faire de vous des programmeurs rapides, mais des analystes capables de **comprendre, vérifier et corriger** une analyse, qu'elle ait été écrite par vous ou générée par un outil. Les erreurs les plus graves en analyse de données ne produisent aucun message d'erreur : seule une compréhension des structures de données permet de les repérer. C'est cette compétence, indispensable pour utiliser l'IA de façon responsable en recherche, qui est évaluée en présence et sans outil d'IA.
+
+# Comment ce module est évalué
+
+Le module d'introduction à R est évalué, comme le reste du cours, **en présence et sans outil d'IA** :
+
+- à l'**évaluation sur table** (50 % de la note du cours) : [À PRÉCISER : sur papier ou en salle informatique surveillée, durée, documents permis] ;
+- lors des **oraux** individuels (25 % chacun) : [À PRÉCISER : quel oral porte sur R].
+
+Les questions ne demandent pas d'écrire de longs programmes. Elles vérifient que vous **comprenez** ce que fait une commande : prédire un résultat, expliquer un message d'erreur, anticiper l'effet d'une modification. Ce sont exactement les formats des pauses « À vous » des diapos, des sections « Et si… ? » des TP et de l'exercice formatif.
+
+# Les types de questions
+
+| Type | Ce qu'on vous demande | Exemple déjà vu |
+|---|---|---|
+| **Prédire** | Donner la sortie d'une commande sans l'exécuter | `x[x > 4]` avec `x <- c(3, 8, 1, 6)` (exercice formatif, Q1) |
+| **Erreur** | Expliquer un message d'erreur, ou pourquoi un résultat est faux | `mean(c(2, 4, NA))` renvoie `NA` (diapos, exercice formatif Q4) |
+| **Et si** | Anticiper l'effet d'une modification du code | Charger un fichier sans `header = TRUE` (diapos, TP2) |
+| **Expliquer** | Justifier un concept avec vos mots | Pourquoi une matrice ne contient qu'un seul type (diapos) |
+| **Écrire** | Produire une commande courte | Compter les fruits rouges avec `sum()` (TP3, Q5) |
+
+À l'oral, chaque réponse est suivie d'une **relance** : « pourquoi ? », « et si on changeait ceci ? ». Une réponse juste sans explication ne suffit pas.
+
+# Ce que vous devez savoir faire
+
+## R-ENV : environnement et scripts
+
+- Expliquer la différence entre la console et un script, et pourquoi un script rend une analyse reproductible.
+- Distinguer un chemin absolu d'un chemin relatif (lien avec Linux : `cd`, `pwd`).
+- Commenter un script avec `#`.
+
+*Où le travailler :* diapos « Mode interactif vs. mode script » et « Les scripts ».
+
+## R-TYP : types et valeurs manquantes
+
+- Reconnaître les types `numeric`, `character`, `logical`, et utiliser `class()`.
+- Prévoir la conversion automatique quand on mélange des types dans un vecteur.
+- Savoir que `TRUE` vaut 1 et `FALSE` vaut 0 dans un calcul.
+- Distinguer `NA` (valeur manquante) de `NULL` (absence de valeur).
+
+*Où le travailler :* diapos « Les différents types de scalaires », TP1 (« Types de base »), exercice formatif Q2.
+
+## R-VEC : vecteurs et opérations
+
+- Créer des vecteurs avec `c()`, `:`, `seq()`, `rep()`.
+- Prévoir le résultat d'une opération élément par élément, y compris le **recyclage** et son warning.
+- Utiliser `sum()`, `mean()`, `length()` plutôt qu'une boucle.
+
+*Où le travailler :* TP1, exercice formatif Q3, pause « À vous » sur les types.
+
+## R-IDX : indexation
+
+- Extraire des éléments par position (`x[2]`, `x[2:4]`, `x[-1]`) et par vecteur logique (`x[x > 4]`).
+- Combiner des conditions avec `&` (et) et `|` (ou).
+- Savoir ce que renvoie un indice hors du vecteur.
+- Ne pas confondre crochets `[ ]` (indexation) et parenthèses `( )` (appel de fonction).
+
+*Où le travailler :* diapos « Les vecteurs (2) », TP1 (« Et si… ? »), exercice formatif Q1.
+
+## R-DF : matrices et data.frame
+
+- Accéder à une rangée, une colonne ou une case avec `[rangée, colonne]`, et à une colonne avec `$`.
+- Sélectionner les rangées qui respectent une condition : `df[df$col > 1, ]`.
+- Expliquer pourquoi une matrice n'a qu'un type alors qu'un `data.frame` peut en mélanger.
+- Reconnaître l'erreur d'une virgule oubliée.
+
+*Où le travailler :* diapos « Les matrices » et « Les data.frame », TP2, exercice formatif Q5.
+
+## R-FCT : fonctions, aide, erreurs et packages
+
+- Lire l'aide d'une fonction (`?mean`) : arguments, valeurs par défaut, exemples.
+- Utiliser un argument nommé (`na.rm = TRUE`).
+- Distinguer une **erreur** (rien n'est calculé) d'un **warning** (le calcul est fait, mais peut-être faux).
+- Expliquer la différence entre `install.packages()` et `library()`.
+
+*Où le travailler :* section « Fonctions, aide et packages » des diapos, exercice formatif Q4 et Q7.
+
+## R-IMP : importer des données
+
+- Charger un fichier avec `read.table()` ou `read.csv()` en choisissant `header` et `sep`.
+- Prévoir ce qui se passe si l'un de ces arguments est mal choisi.
+- Vérifier un chargement avec `head()`, `dim()` et `str()`.
+
+*Où le travailler :* diapos « Chargement des données » et pause « À vous » associée, TP2 (« Et si… ? »).
+
+## R-TRI : trier, compter, résumer
+
+- Trier les rangées d'un `data.frame` avec `order()`, et expliquer pourquoi `sort()` ne convient pas.
+- Compter avec `sum()` sur une condition, trouver un maximum avec `max()`, une position avec `which()`.
+
+*Où le travailler :* TP3 et son « Et si… ? », exercice formatif Q6.
+
+## R-AUD : vérifier une analyse
+
+- Repérer dans un script les erreurs **silencieuses** : catégories mal saisies, `NA` dans une condition, `sort()` au lieu de `order()`, recyclage.
+- Appliquer les vérifications systématiques avant de faire confiance à un résultat : `table()`, `sum(is.na())`, `nrow()` avant et après une sélection, contrôle de quelques lignes à la main.
+- Expliquer pourquoi un script qui s'exécute sans erreur peut donner un résultat faux.
+
+*Où le travailler :* activité « Auditer un script généré par IA » et son corrigé.
+
+## R-BOU : boucles
+
+- Lire une boucle `for` et prévoir ce qu'elle affiche ou calcule.
+- Réécrire une boucle simple sous forme vectorisée.
+
+*Où le travailler :* diapo « Les boucles for ».
+
+# Comment vous préparer
+
+1. **Refaites sans ordinateur** les pauses « À vous » des diapos, les sections « Et si… ? » des TP et l'exercice formatif : écrivez votre prédiction, *puis* vérifiez dans RStudio.
+2. Quand une prédiction est fausse, **cherchez pourquoi** avant de passer à la suite : c'est ce qu'on vous demandera d'expliquer à l'oral.
+3. Entraînez-vous à **expliquer à voix haute** : « cette commande renvoie… parce que… ».
+4. Refaites l'activité d'audit **seul**, en appliquant les cinq vérifications systématiques du corrigé.
+5. Les solutionnaires des TP donnent les réponses et les explications : lisez surtout les explications.

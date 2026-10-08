@@ -1,0 +1,40 @@
+---
+title: "Guide d'étude express : le tidyverse"
+subtitle: "L'essentiel · la version complète détaille chaque notion et où la travailler"
+metadata-files: [_tp.yml]
+format:
+  html:
+    toc: false
+---
+
+Évalué **en présence et sans IA** (évaluation sur table, oraux). On vérifie que vous **comprenez** une chaîne de commandes : prédire son résultat (souvent le **nombre de lignes**), expliquer pourquoi il est faux, anticiper l'effet d'une modification.
+
+# Savoir faire
+
+| Notion | Ce qu'il faut savoir faire |
+|---|---|
+| **Importer** | `read_csv()` / `read_tsv()` ; lire le compte rendu ; repérer une colonne de nombres lue en texte (`<chr>`) |
+| **Pipe** | réécrire `f(g(x))` avec le *pipe* (`x` puis `g()` puis `f()`), et lire une chaîne « puis… puis… » |
+| **Verbes** | `select()`, `filter()`, `mutate()`, `arrange()`, `count()`, `slice_max()`, `pull()` ; assigner avec `<-` pour garder le résultat |
+| **Nettoyer** | `str_to_lower()`, `str_trim()`, `distinct()` ; repérer les variantes et les doublons avec `count()` |
+| **Résumer** | `group_by()` + `summarise()` (une ligne par groupe) vs `mutate()` (autant de lignes) ; `n()` vs `sum(n)` |
+| ***Tidy*** | une variable par colonne, une observation par ligne, une valeur par case ; `pivot_longer()` / `pivot_wider()` et les dimensions obtenues |
+| **Joindre** | `left_join()`, `inner_join()`, `full_join()`, `anti_join()` ; préciser `by` |
+| **Traduire** | passer d'une commande en R de base à son équivalent *tidyverse* |
+
+# Les pièges silencieux à connaître
+
+Aucun ne produit d'erreur. Sachez les **prédire** et dire comment les **vérifier**.
+
+1. `filter()` écarte les lignes où la condition vaut `NA` → vérifier que les parties font le tout.
+2. `filter(x == 2019 | 2020)` garde **tout** ; `filter(x == c("a", "b"))` **recycle** → écrire `x %in% c(...)`.
+3. Après `summarise()` à deux groupes, le résultat **reste groupé** → un `sum()` suivant se fait par groupe.
+4. `count()` compte des **lignes** : se demander ce que représente une ligne.
+5. Une **clé en double** à droite d'un `left_join()` **ajoute** des lignes ; une clé mal saisie donne des `NA` → `nrow()` avant/après, `count(cle) |> filter(n > 1)`, `anti_join()`.
+6. `Controle`, `controle` et `controle␣` sont trois catégories → `count()` puis nettoyer.
+
+# Comment vous préparer
+
+- Refaites **sans ordinateur** les pauses « À vous », les « Et si… ? » des TP et l'exercice formatif ; vérifiez ensuite dans RStudio.
+- Quand une prédiction est fausse, **cherchez pourquoi** : c'est ce qu'on vous demandera à l'oral.
+- Lisez les **explications** des solutionnaires, pas seulement les réponses.

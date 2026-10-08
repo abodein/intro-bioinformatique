@@ -1,0 +1,18 @@
+# Système / Quarto / R
+.DS_Store
+.Rhistory
+.Rproj.user/
+.quarto/
+*_files/
+index_files/
+
+# Privé : diapos avec TP intégrés (correction au clic) et leurs sources
+modules/*/*_2026_TP.*
+modules/*/_tp[0-9]_diapos.qmd
+
+# Volumineux : régénéré par data/get_babynames.R
+modules/*/data/babynames.csv
+
+# Privé : banques de questions (examens)
+modules/*/Banque_questions_*
+modules/*/_archive*/

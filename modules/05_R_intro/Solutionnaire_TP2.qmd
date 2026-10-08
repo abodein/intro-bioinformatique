@@ -1,0 +1,147 @@
+---
+title: "Solutionnaire du TP2"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+# Le fichier TP2.csv n'existe que sur le serveur (/home/public/R/TP2.csv).
+# Copiez-le dans data/ pour que les résultats s'affichent dans ce solutionnaire.
+donnees_dispo <- file.exists("data/TP2.csv")
+if (donnees_dispo) objet1 <- read.csv("data/TP2.csv")
+```
+
+```{r}
+#| echo: false
+#| results: asis
+if (!donnees_dispo) cat("::: {.callout-note}\nLe fichier `TP2.csv` se trouve sur le serveur du cours : exécutez ces commandes dans RStudio pour voir les résultats.\n:::\n")
+```
+
+# À votre tour
+
+## Charger le fichier
+
+```{r}
+#| eval: false
+objet1 <- read.csv('/home/public/R/TP2.csv')
+```
+
+Le résultat doit être **assigné** à une variable, sinon il est seulement affiché dans la console. Vérifiez le chargement avec `head(objet1)`, `dim(objet1)` ou le panneau *Environment*.
+
+## 0. Extraire un *rectangle* de données
+
+On sélectionne des rangées **et** des colonnes consécutives avec deux vecteurs d'indices `[rangées, colonnes]`. Par exemple, les rangées 2 et 3 sur les colonnes 1 à 3 :
+
+```{r}
+#| eval: !expr donnees_dispo
+objet1[2:3, 1:3]
+```
+
+## 1. Les noms de colonnes
+
+```{r}
+#| eval: !expr donnees_dispo
+noms_colonnes <- colnames(objet1)
+noms_colonnes[1:8]
+```
+
+## 2. La colonne `ID`
+
+Plusieurs écritures sont possibles. `$` et `[, "ID"]` renvoient un **vecteur**, alors que `["ID"]` renvoie un `data.frame` d'une seule colonne :
+
+```{r}
+#| eval: !expr donnees_dispo
+ids <- objet1$ID          # vecteur
+ids <- objet1[, "ID"]     # vecteur (équivalent)
+class(objet1["ID"])       # data.frame d'une colonne
+```
+
+## 3. Le score qualité du SNP `rs189107123`
+
+On compare chaque identifiant au SNP voulu avec `==`, ce qui donne un vecteur logique (un seul `TRUE`), puis on l'utilise pour sélectionner la rangée :
+
+```{r}
+#| eval: !expr donnees_dispo
+rangee <- ids == "rs189107123"
+objet1[rangee, "QUAL"]
+```
+
+## 4. La position du SNP `rs4030331`
+
+Même principe que la question 3, sur la colonne `POS` :
+
+```{r}
+#| eval: !expr donnees_dispo
+objet1[ids == "rs4030331", "POS"]
+```
+
+## 5. Le score qualité moyen
+
+```{r}
+#| eval: !expr donnees_dispo
+mean(objet1$QUAL)
+```
+
+## 6. Les SNPs de qualité supérieure à 99
+
+La condition `objet1$QUAL > 99` sélectionne les rangées ; le nom `"ID"` sélectionne la colonne :
+
+```{r}
+#| eval: !expr donnees_dispo
+good.snps <- objet1[objet1$QUAL > 99, "ID"]
+length(good.snps)
+```
+
+# Et si… ?
+
+## 1. Charger `df.tsv` sans `header = TRUE`
+
+```{r}
+df <- data.frame(x = 1:3, y = c(4, 5, 8), nom = c("a", "b", "c"))
+write.table(df, file = "df_exemple.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+sans_entete <- read.table("df_exemple.tsv", sep = "\t")
+sans_entete
+str(sans_entete)
+```
+
+La ligne d'en-tête est lue comme une ligne de données : on obtient une ligne de trop, des colonnes nommées `V1`, `V2`, `V3`, et **toutes les colonnes deviennent du texte** (une colonne ne contient qu'un type, et `"x"` n'est pas un nombre).
+
+```{r}
+#| include: false
+file.remove("df_exemple.tsv")
+```
+
+## 2. Chercher un SNP qui n'existe pas
+
+```{r}
+#| eval: !expr donnees_dispo
+objet1[ids == "rs000", "QUAL"]
+```
+
+Aucune erreur : le vecteur logique ne contient que des `FALSE`, donc aucune rangée n'est sélectionnée et R renvoie un vecteur **vide**. Une faute de frappe dans un identifiant passe donc inaperçue si on ne vérifie pas le résultat.
+
+## 3. Oublier la virgule
+
+```{r}
+#| error: true
+#| eval: !expr donnees_dispo
+objet1[objet1$QUAL > 99]
+```
+
+Sans virgule, R interprète le vecteur logique comme une sélection de **colonnes**. Ce vecteur a une valeur par rangée, donc beaucoup plus de valeurs qu'il n'y a de colonnes : R signale des colonnes inexistantes (`undefined columns selected`).
+
+## 4. Une valeur manquante dans `QUAL`
+
+Démonstration sur un petit exemple :
+
+```{r}
+snps <- data.frame(ID = c("rs1", "rs2", "rs3", "rs4"), QUAL = c(120, NA, 50, 101))
+mean(snps$QUAL)
+mean(snps$QUAL, na.rm = TRUE)
+snps[snps$QUAL > 99, "ID"]
+snps[which(snps$QUAL > 99), "ID"]
+```
+
+- Question 5 : la moyenne devient `NA`. L'argument `na.rm = TRUE` retire les valeurs manquantes.
+- Question 6 : la comparaison `NA > 99` donne `NA`, ce qui ajoute un `NA` dans `good.snps`. `which()` ne garde que les positions où la condition est `TRUE`.

@@ -1,0 +1,214 @@
+---
+title: "TP1 : un premier contact avec R et RStudio"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+Connectez-vous par navigateur au serveur RStudio du cours : <https://bif-rstudio.compbio.ulaval.ca>
+
+# Types de base en R
+
+## Les nombres
+
+Les nombres sont représentés par la classe numeric dans R:
+
+Dans les faits, il y a une distinction entre les numeric, qui incluent les nombres à virgule, et les integer, qui sont uniquement des nombres entiers. 
+Généralement, la distinction n’est pas importante. Si on veut qu’un nombre soit considéré comme un entier, il faut ajouter un “L” à la fin.
+
+On peut tester qu’une valeur est un entier avec la fonction is.integer et qu’une valeur est une valeur numérique avec la fonction is.numeric:
+
+```{r}
+class(1L)
+is.integer(1)
+is.integer(1L)
+is.numeric(1)
+is.numeric(1L)
+```
+
+## Les chaînes de caractères
+
+Dans R, les chaînes de caractères peuvent être un seul caractère ascii ou bien plusieurs caractères. 
+Il faut placer la chaîne de caractères entre double guillemets autrement R croit qu’on souhaite appeler une variable:
+
+```{r}
+class("a")
+class("abc")
+class("1")
+class("")
+```
+
+On peut combiner plusieurs chaînes de caractères avec la fonction paste:
+
+```{r}
+a <- "salut"
+b <- "bonjour"
+paste(a, b)
+```
+
+## Les booléens
+
+Par définition, un booléen (logical) peut avoir seulement 2 valeurs: vrai (TRUE) ou faux (FALSE):
+
+```{r}
+class(TRUE)
+class(1 == 1)
+class(1 == "1")
+```
+
+## Les valeurs manquantes
+
+Lorsque des données ne sont pas disponibles, on les représente par la valeur `NA`. 
+R va également ajouter des `NA` automatiquement lorsque des champs sont vides lors du chargement d’un tableau.
+
+On peut tester si une variable est non-disponible en utilisant la fonction `is.na()`.
+
+```{r}
+is.na(NA)
+is.na(1)
+```
+
+# Structure de données: Vecteurs
+
+Lorsqu’on souhaite représenter un ensemble de valeurs qui devraient être regroupées, on va utiliser des vecteurs. 
+Les vecteurs sont donc une suite de valeurs du même type. 
+La manière la plus simple de créer un vecteur est d’utiliser la fonction `c` (concaténation):
+
+```{r}
+c(1,2,3)
+class(c(1,2,3))
+c("a", "b", "c")
+```
+
+Si on essayait de combiner des valeurs de différents types, R va les transformer dans le format le plus générique:
+
+
+```{r}
+c(1, "a", 2)
+```
+
+La seule exception est pour les valeurs manquantes, qu’on peut ajouter à un vecteur:
+
+```{r}
+c(1, NA, 2, 3)
+```
+
+À noter: les `NA` peuvent affecter les résultats de plusieurs fonctions telles que `mean`, `sum` ou `median`.
+
+Il existe plusieurs fonctions qui permettent de créer rapidement des vecteurs de numériques sans avoir à écrire explicitement toutes les valeurs.
+
+- `seq` : La fonction `seq` permet de générer tous les nombres entre 2 valeurs.
+```{r}
+seq(1, 10)
+seq(10, 1)
+```
+
+On peut également utiliser le paramètre `by` pour changer l’incrémentation:
+
+```{r}
+seq(1, 10, by = 2)
+seq(1, 10, by = 0.5)
+```
+
+- `:` : Le `:` peut être utilisé pour obtenir un résultat similaire à la fonction `seq`:
+```{r}
+1:10
+10:1
+-1:10
+```
+
+- `rep` : Pour répéter la même valeur plusieurs fois, on peut utiliser la fonction `rep`. 
+À noter que cette fonction peut également être appelée avec les autres types de données:
+
+```{r}
+rep(1, 10)
+rep("a", 10)
+rep(FALSE, 10)
+```
+
+## Opérations sur les vecteurs de valeurs numériques
+
+Il est possible d’effectuer rapidement la même opération sur un vecteur de numérique comparativement à d’autres langages de programmation qui demanderaient l’utilisation de boucles.
+
+```{r}
+vecteur <- 1:10
+vecteur + 1
+vecteur + rep(1, 10)
+```
+
+Dans le premier exemple, lorsqu’on écrit `vecteur + 1`, on dit en fait d’additionner la variable `vecteur` avec un vecteur de taille 1 (qui contient la valeur 1). 
+Étant donné que le deuxième vecteur est plus petit que le premier, sa valeur est répétée pour obtenir la même taille.
+
+Dans le cas où le deuxième vecteur serait d’une longueur plus grande que 1, l’ensemble du vecteur est répété:
+
+```{r}
+vecteur + c(1,2)
+vecteur + rep(c(1,2), 5)
+```
+
+Si le deuxième vecteur n’a pas une taille dont le premier vecteur est un multiple, la dernière répétition sera tronquée et R affichera un warning:
+
+```{r}
+vecteur + c(1,2,3)
+```
+
+## Autres opérations sur les vecteurs
+
+Plusieurs fonctions sont disponibles pour calculer rapidement certaines statistiques sur les vecteurs. 
+Il est recommandé de les utiliser plutôt que de calculer ces statistiques avec des boucles. 
+D’une part, ça évite les erreurs et d’autre part, ces fonctions sont codées de manières à être extrêmement rapides.
+
+```{r}
+sum(vecteur)
+mean(vecteur)
+median(vecteur)
+length(vecteur)
+```
+
+Lorsqu’un vecteur contient des valeurs `NA`, le résultat de ces fonctions sera affecté:
+
+```{r}
+sum(c(1,2,3,NA))
+sum(c(1,2,3,NA), na.rm = TRUE)
+```
+
+## Accéder à un ou plusieurs éléments d’un vecteur
+
+On peut accéder aux éléments d’un vecteur en donnant l’index de l’élément souhaité dans le vecteur. On peut également sélectionner plusieurs éléments en même temps.
+
+```{r}
+vecteur[1]
+vecteur[2:4]
+```
+
+On peut également sélectionner les éléments qui correspondent à un certain critère:
+
+```{r}
+i <- vecteur > 4
+vecteur[i]
+```
+
+# À votre tour
+
+1. Assignez un vecteur `x` avec les valeurs numériques `(1,2,3,4,5)` et un vecteur `y` avec les valeurs `(4,4,4,4,4)`.
+
+2. Essayez l'opération arithmétique `+` sur ces vecteurs
+3. Assignez le résultat de l’opération à une 3e variable `z`
+4. Regardez la liste des variables créées avec `ls()`
+5. Regardez le contenu du deuxième élément du vecteur `z`
+6. Quels sont les éléments plus petits que 7 dans le vecteur `z` (Essayez une comparaison logique).
+7. Créez une matrice de deux colonnes et trois rangées avec les nombres `1:6`
+(PS : n'oubliez pas d'utiliser la documentation : `help(matrix)`).
+
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R. Si le résultat vous surprend, cherchez pourquoi.
+
+Reprenez le vecteur `x` de la question 1.
+
+1. Que renvoie `x[10]` ? Pourquoi R ne produit-il pas d'erreur ?
+2. Que renvoie `x[-1]` ? Que fait un indice négatif ?
+3. Et si `y` valait `c(1, 2)` au lieu de `(4,4,4,4,4)` : que renverrait `x + y`, et quel message R afficherait-il ?
+4. Et si vous ajoutiez `byrow = TRUE` à la matrice de la question 7 : qu'est-ce qui change ?
+5. Et si vous demandiez `matrix(1:6, ncol = 4)` ?

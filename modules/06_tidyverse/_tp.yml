@@ -1,0 +1,15 @@
+# Métadonnées communes aux TP et solutionnaires (gabarit Université Laval)
+lang: fr
+format:
+  html:
+    theme: [cosmo, ulaval-doc.scss]
+    toc: true
+    toc-depth: 2
+    toc-title: "Sommaire"
+    embed-resources: true
+    highlight-style: github
+    include-before-body: _ulaval-bandeau.html
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: "#>"

@@ -1,0 +1,200 @@
+---
+lang: fr
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 2cm
+      top: 2.6cm
+      bottom: 2.2cm
+    fontsize: 11pt
+    mainfont: "Helvetica Neue"
+    include-in-header: _ulaval.typ
+corrige: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>", message = FALSE)
+Sys.setenv(LANGUAGE = "en")
+options(width = 80)
+suppressPackageStartupMessages(library(tidyverse))
+mesures <- tibble(
+  id     = c("A1", "A2", "B1", "B2", "C1"),
+  souche = c("WT", "KO", "WT", "KO", "WT"),
+  temps  = c(0, 0, 24, 24, 48),
+  signal = c(1.2, 0.8, 3.5, NA, 4.1)
+)
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : manipuler des données avec le tidyverse]
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : manipuler des données avec le tidyverse — corrigé]
+```
+:::
+
+::: {.content-hidden when-meta="corrige"}
+Répondez **sans exécuter le code**. Le but est de vérifier ce que vous avez compris, pas d'avoir tout juste : on corrige ensemble juste après.
+:::
+
+::: {.content-visible when-meta="corrige"}
+Chaque réponse est suivie de la notion à revoir si elle a été manquée.
+:::
+
+Toutes les questions utilisent le tableau `mesures` (5 lignes) :
+
+```
+  id    souche  temps  signal
+  A1    WT          0     1.2
+  A2    KO          0     0.8
+  B1    WT         24     3.5
+  B2    KO         24      NA
+  C1    WT         48     4.1
+```
+
+## 1. Le *pipe*
+
+Réécrivez avec `|>` : `head(arrange(mesures, desc(signal)), 2)`. Quels `id` obtient-on ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+mesures |> arrange(desc(signal)) |> head(2)
+```
+On lit dans l'ordre d'exécution : « je trie, **puis** je garde les 2 premières ». *À revoir : le pipe.*
+:::
+
+## 2. `filter()` et les `NA`
+
+Combien de lignes renvoient (a) `filter(mesures, signal > 1)` et (b) `filter(mesures, signal <= 1)` ? Pourquoi la somme ne fait-elle pas 5 ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+filter(mesures, signal > 1) |> nrow()
+filter(mesures, signal <= 1) |> nrow()
+```
+B2 a un signal manquant : `NA > 1` vaut `NA`, et `filter()` ne garde que les `TRUE`. B2 disparaît des deux sélections, sans message. *À revoir : `filter()` et les `NA`.*
+:::
+
+## 3. Conditions multiples
+
+On veut les mesures à 0 **ou** 24 heures. Que renvoie chaque commande ? Laquelle est juste ?
+
+(a) `filter(mesures, temps == 0 | 24)` (b) `filter(mesures, temps %in% c(0, 24))`
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+filter(mesures, temps == 0 | 24) |> pull(id)
+filter(mesures, temps %in% c(0, 24)) |> pull(id)
+```
+La commande (a) se lit `(temps == 0) | 24` : `24` vaut `TRUE`, la condition est toujours vraie et C1 (48 h) est gardé. Seule la commande (b) est juste. *À revoir : `filter()`, `%in%`.*
+:::
+
+## 4. `mutate()` ou `summarise()` ?
+
+Combien de lignes et de colonnes renvoie chaque commande ?
+
+(a) `mesures |> group_by(souche) |> summarise(moy = mean(temps))`
+(b) `mesures |> group_by(souche) |> mutate(moy = mean(temps))`
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+mesures |> group_by(souche) |> summarise(moy = mean(temps))
+mesures |> group_by(souche) |> mutate(moy = mean(temps)) |> dim()
+```
+(a) une ligne par groupe : 2 lignes, 2 colonnes. (b) autant de lignes qu'avant : 5 lignes, 5 colonnes, la moyenne de la souche répétée. *À revoir : `group_by()`, `summarise()`, `mutate()`.*
+:::
+
+## 5. Résumer par groupe
+
+Que renvoie `mesures |> group_by(souche) |> summarise(n = n(), m = mean(signal))` ? Comment obtenir une moyenne pour les deux souches ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+mesures |> group_by(souche) |> summarise(n = n(), m = mean(signal))
+mesures |> group_by(souche) |> summarise(n = n(), m = mean(signal, na.rm = TRUE))
+```
+La souche KO contient le `NA` de B2 : sa moyenne est `NA`. Avec `na.rm = TRUE`, elle vaut 0.8 (une seule mesure, à noter dans l'interprétation). *À revoir : `summarise()`, `NA`.*
+:::
+
+## 6. Changer la forme
+
+Un tableau `qpcr` a 4 lignes (une par échantillon) et 4 colonnes : `id`, `GAPDH`, `ACTB`, `TP53`. Combien de lignes et de colonnes après `pivot_longer(qpcr, -id, names_to = "gene", values_to = "ct")` ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.6cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+qpcr <- tibble(id = paste0("E", 1:4), GAPDH = 18:21, ACTB = 17:20, TP53 = 25:28)
+pivot_longer(qpcr, -id, names_to = "gene", values_to = "ct") |> dim()
+```
+4 échantillons × 3 gènes = 12 lignes ; 3 colonnes (`id`, `gene`, `ct`). *À revoir : `pivot_longer()`.*
+:::
+
+## 7. Jointures
+
+Le tableau `lots` associe un lot de réactif à chaque échantillon :
+
+```
+  id    lot
+  A1    L1
+  A2    L1
+  B1    L2
+  B1    L2
+  c1    L3
+```
+
+(a) Combien de lignes renvoie `left_join(mesures, lots, by = "id")` ? (b) Quel `lot` reçoit C1 ? (c) Quelle commande liste les échantillons de `mesures` sans lot ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.6cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+lots <- tibble(id = c("A1", "A2", "B1", "B1", "c1"), lot = c("L1", "L1", "L2", "L2", "L3"))
+left_join(mesures, lots, by = "id")
+anti_join(mesures, lots, by = "id") |> pull(id)
+```
+(a) 6 lignes au lieu de 5 : B1 est en double dans `lots`, sa mesure est dupliquée. (b) `NA` : `"c1"` ≠ `"C1"`. (c) `anti_join()`. Aucun de ces problèmes ne produit de message. *À revoir : vérifier une jointure.*
+:::

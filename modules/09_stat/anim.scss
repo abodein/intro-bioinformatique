@@ -1,0 +1,140 @@
+/*-- scss:defaults --*/
+
+$bleu-tt: #4A7FC1;
+$bleu-tt-clair: #C9DCF2;
+$vert-tt: #7FB069;
+$vert-tt-clair: #D5EBC8;
+$gris-tt: #6B6B6B;
+
+/*-- scss:rules --*/
+
+// ---- Tableaux animés (_anim.R) ----
+.reveal .tt {
+  display: inline-flex;
+  flex-direction: column;
+  font-family: "Source Sans Pro", Helvetica, sans-serif;
+  font-size: 0.92em;
+  vertical-align: middle;
+  .tt-titre { color: $gris-tt; font-size: 0.9em; text-align: center; margin-bottom: 0.15em; }
+  .tr { display: flex; }
+  .td {
+    display: inline-block;
+    min-width: 3.6em;
+    box-sizing: border-box;
+    padding: 0.08em 0.4em;
+    margin: 1px;
+    background: #F2F2F2;
+    color: #222;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .th { background: #DCDCDC; font-weight: 700; }
+  .col-hl { background: $bleu-tt-clair; }
+  .th.col-hl { background: $bleu-tt; color: #FFF; }
+  .row-hl { background: $vert-tt-clair; }
+  .row-hl.col-hl { background: $vert-tt; color: #FFF; }
+  .row-off { opacity: 0.25; }
+  .row-na { background: #F8D0D3; text-decoration: line-through; }
+  .na { color: #E30513; font-weight: 700; }
+  .td.nouveau { background: #FFE9A8; }
+  .td.cell-clair { background: #6FB1EA !important; color: #FFF; }
+  .td.cell-hl { background: #1F5FB0 !important; color: #FFF; }
+  .th.nouveau { background: #FFC103; }
+}
+.reveal .tt.groupe { border: 5px solid #222; border-radius: 14px; padding: 6px; }
+.reveal .tt.resume .td { background: $bleu-tt-clair; }
+.reveal .tt.resume .th { background: $bleu-tt; color: #FFF; }
+
+.reveal .rangee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  margin: 0.4em 0;
+}
+.reveal .rangee.colonne { flex-direction: column; align-items: center; gap: 0.35em; }
+.reveal .fleche { font-size: 1.3em; color: $bleu-tt; }
+
+// Surlignage progressif (fragments sur des lignes)
+.reveal .fragment.surligne-vert.visible { background: $vert-tt-clair !important; }
+
+// ---- Code annoté ----
+.reveal .code-annote { margin: 0.5em 0 0.8em; }
+.reveal .ca-code {
+  font-family: monospace;
+  font-size: 0.9em;
+  border: 2px solid #999;
+  background: #F6F6F6;
+  padding: 0.25em 0.6em;
+  display: inline-block;
+}
+.reveal .ca-bulles { display: flex; gap: 0.6em; margin-top: 0.5em; }
+.reveal .bulle {
+  border-radius: 10px;
+  padding: 0.3em 0.6em;
+  color: #FFF;
+  font-size: 0.75em;
+  max-width: 18em;
+  position: relative;
+}
+.reveal .bulle::before {
+  content: "";
+  position: absolute;
+  top: -12px; left: 18px;
+  border: 6px solid transparent;
+  border-bottom-color: inherit;
+}
+.reveal .ca-bleu { color: $bleu-tt; font-weight: 700; }
+.reveal .ca-vert { color: darken($vert-tt, 15%); font-weight: 700; }
+.reveal .ca-gris { color: $gris-tt; font-weight: 700; }
+.reveal .ca-jaune { color: #B8860B; font-weight: 700; }
+.reveal .ca-bg-bleu { background: $bleu-tt; }
+.reveal .ca-bg-vert { background: $vert-tt; }
+.reveal .ca-bg-gris { background: $gris-tt; }
+.reveal .ca-bg-jaune { background: #D4A017; }
+.reveal .ca-rouge { color: #E30513; font-weight: 700; }
+.reveal .ca-bg-rouge { background: #E30513; }
+.reveal .rangee .fragment { display: flex; align-items: center; gap: 0.5em; }
+.reveal .legende-anim { font-size: 0.75em; color: #515151; text-align: center; margin-top: 0.3em; }
+
+// Bandeau de code sous un tableau animé
+.reveal .bandeau-code pre { font-size: 0.85em; }
+
+// Contenu brut d'un fichier texte (fichier_brut())
+.reveal .brut {
+  display: inline-block;
+  font-family: monospace;
+  font-size: 0.8em;
+  line-height: 1.35;
+  text-align: left;
+  background: #F2F2F2;
+  border: 1px solid #BBB;
+  padding: 0.4em 0.8em;
+  .champ { display: inline-block; }
+  .sep { color: #E30513; font-weight: 700; }
+}
+// Schéma du cycle de la science des données, avec les logos
+.reveal .cycle { display: flex; align-items: center; justify-content: center; gap: 0.4em; margin: 0.6em 0; }
+.reveal .cycle .etape { white-space: nowrap; display: flex; flex-direction: column; align-items: center; font-size: 0.8em; }
+.reveal .cycle .etape img { height: 110px; margin: 0 0 0.2em; }
+.reveal .cycle .etape.ici { font-weight: 700; color: #E30513; }
+.reveal .cycle .etape.ailleurs { opacity: 0.45; }
+
+// Schéma des 3 règles des données tidy (colonnes, lignes, cases)
+.reveal .schema-tidy { display: flex; align-items: center; gap: 1.2em; justify-content: center; }
+.reveal .schema-tidy svg { width: 470px; flex-shrink: 0; }
+.reveal .schema-tidy ol { font-size: 1em; }
+.reveal .schema-tidy .bleu { color: #4A7FC1; font-weight: 700; }
+.reveal .schema-tidy .vert { color: #5E9A44; font-weight: 700; }
+.reveal .schema-tidy .rouge { color: #E30513; font-weight: 700; }
+// Verdicts tidy / non tidy
+.reveal .verdict { font-size: 3.2em; line-height: 1; }
+// Minuteur des exercices
+.reveal .minuteur {
+  display: inline-block; font-family: monospace; font-size: 2.2em; font-weight: 700;
+  background: #222; color: #FFF; padding: 0.05em 0.35em; border-radius: 6px;
+}
+.reveal .minuteur.fini { background: #E30513; }
+
+.reveal .rangee.haut { align-items: flex-start; }
+.reveal .rangee.haut .fleche { margin-top: 1.6em; }

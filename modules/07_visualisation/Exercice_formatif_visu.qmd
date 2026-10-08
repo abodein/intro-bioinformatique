@@ -1,0 +1,156 @@
+---
+lang: fr
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 2cm
+      top: 2.6cm
+      bottom: 2.2cm
+    fontsize: 11pt
+    mainfont: "Helvetica Neue"
+    include-in-header: _ulaval.typ
+corrige: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>", message = FALSE)
+Sys.setenv(LANGUAGE = "en")
+options(width = 80)
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : visualisation avec R]
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : visualisation avec R — corrigé]
+```
+:::
+
+::: {.content-hidden when-meta="corrige"}
+Répondez **sans exécuter de code**. Le but est de vérifier ce que vous avez compris, pas d'avoir tout juste : on corrige ensemble juste après.
+:::
+
+::: {.content-visible when-meta="corrige"}
+Chaque réponse est suivie de la notion à revoir si elle a été manquée.
+:::
+
+Les questions 1 à 5 utilisent ce tableau `souris` : l'expression d'un gène chez 6 souris.
+
+```{r}
+#| echo: false
+#| comment: ""
+souris <- tibble(id = paste0("M", 1:6), lignee = c("WT", "WT", "WT", "KO", "KO", "KO"),
+                 semaine = c(1, 2, 3, 1, 2, 3), expression = c(5.1, 5.8, 6.4, 8.2, 9.0, 4.3))
+print(as.data.frame(souris), row.names = FALSE)
+```
+
+## 1. Lire du code
+
+Décrivez le graphique produit (axes, forme, couleurs, légende) :
+
+```{r}
+#| eval: false
+ggplot(souris, aes(x = lignee, y = expression, color = lignee)) +
+  geom_point(size = 3) +
+  stat_summary(fun = mean, geom = "point", shape = 4, size = 6)
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+En x, deux catégories (`KO` puis `WT`, ordre alphabétique) ; en y, l'expression. Trois points par lignée, une couleur par lignée (légende `lignee`), et une croix de la même couleur à la **moyenne** de chaque lignée (KO : 7.17 ; WT : 5.77). *À revoir : la grammaire (data, aes, geom), `stat_summary()`.*
+:::
+
+## 2. *Mapping* ou *setting*
+
+On veut tous les points en rouge. Qu'obtient-on avec (a) `geom_point(aes(color = "red"))` ? (b) `geom_point(color = "red")` ? (c) `geom_point(color = lignee)` ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Des points **rouge saumon** (la première couleur de la palette) et une légende « red » : dans `aes()`, `"red"` est une donnée. (b) Des points rouges, sans légende : c'est la bonne réponse. (c) Une erreur, `object 'lignee' not found` : hors de `aes()`, R cherche une variable, pas une colonne. *À revoir : mapping ou setting.*
+:::
+
+## 3. `geom_bar()` ou `geom_col()` ?
+
+(a) Que montre `ggplot(souris, aes(lignee)) + geom_bar()` ? (b) Et `ggplot(souris, aes(lignee, expression)) + geom_col()` ? Hauteur de chaque barre ? (c) Ce second graphique s'intitule « Expression moyenne par lignée ». Est-ce juste ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Deux barres de hauteur **3** : `geom_bar()` compte les lignes. (b) Deux barres empilées : KO = 8.2 + 9.0 + 4.3 = **21.5**, WT = 5.1 + 5.8 + 6.4 = **17.3**, les **sommes**. (c) Non : le titre annonce des moyennes, le graphique montre des sommes, sans aucun message. Il faut `summarise(moyenne = mean(expression), .by = lignee)` avant `geom_col()`, ou mieux, montrer les 3 points. *À revoir : `geom_bar()` compte, `geom_col()` empile.*
+:::
+
+## 4. Zoomer
+
+On ajoute `+ ylim(5, 10)` à un boxplot de l'expression par lignée. (a) Que devient la souris M6 ? (b) La médiane affichée pour KO est-elle juste ? (c) Que fallait-il écrire ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Son expression (4.3) est hors limites : elle est **retirée des données**, avec un simple *warning* `Removed 1 row`. (b) Non : la médiane KO devient celle de 8.2 et 9.0, soit 8.6, au lieu de **8.2** avec les trois souris. (c) `coord_cartesian(ylim = c(5, 10))` : zoom sans retirer de données. *À revoir : `limits` et `coord_cartesian()`.*
+:::
+
+## 5. Des lignes
+
+On veut l'évolution de l'expression au fil des semaines, une courbe par lignée. (a) Qu'est-ce qui ne va pas avec `ggplot(souris, aes(semaine, expression)) + geom_line()` ? (b) Corrigez.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(1.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Une **seule** ligne relie les 6 points dans l'ordre des semaines : elle zigzague entre WT et KO (5.1, 8.2, 5.8, 9.0…). Aucun message. (b) `aes(semaine, expression, color = lignee)` (ou `group = lignee`) : une ligne par lignée. *À revoir : l'aesthetic `group`.*
+:::
+
+## 6. Préparer les données
+
+Le tableau `mesures` a une colonne `gene` et une colonne par échantillon : `ctrl_1`, `ctrl_2`, `trt_1`, `trt_2`. On veut un boxplot de l'expression par échantillon. (a) Pourquoi ne peut-on pas l'écrire directement ? (b) Quelle commande faut-il d'abord ? Écrivez-la. (c) Combien de lignes aura le résultat pour 1000 gènes ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) L'échantillon est **dans les noms de colonnes** : aucune colonne ne peut aller en `x`. (b) `mesures |> pivot_longer(-gene, names_to = "echantillon", values_to = "expression")`, puis `ggplot(aes(echantillon, expression)) + geom_boxplot()`. (c) 1000 × 4 = **4000** lignes. *À revoir : le format long.*
+:::
+
+## 7. Lire un volcano plot
+
+Sur un volcano plot (`log2FoldChange` en x, `-log10(padj)` en y), le gène A est en (3, 1), le gène B en (−0.5, 25), le gène C en (−2, 8). (a) Lequel change le plus ? Lequel est le plus significatif ? (b) Lesquels passent les seuils |log2FC| > 1 et `padj` < 0.05 ? (c) Pourquoi les gènes à `padj` manquante n'apparaissent-ils pas ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) A change le plus (2³ = 8 fois), B est le plus significatif (`padj` = 10^−25^) mais change peu (un facteur 2^0.5^ ≈ 1.4). (b) Seuil `padj` < 0.05 ⇔ y > 1.3. A : y = 1, `padj` = 0.1, **non significatif** malgré le grand changement. B : significatif mais |log2FC| < 1. Seul **C** passe les deux seuils (4 fois moins exprimé, `padj` = 10^−8^). (c) `-log10(NA)` vaut `NA` : `ggplot2` retire ces points avec un *warning*. Ce sont des gènes **non testés**, pas des gènes « non significatifs ». *À revoir : lire un volcano plot.*
+:::

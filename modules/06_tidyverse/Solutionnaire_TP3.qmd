@@ -1,0 +1,141 @@
+---
+title: "Solutionnaire du TP3"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages(library(tidyverse))
+library(nycflights13)
+# copie locale de /home/public/tidyverse/grades.tsv
+grades <- read_tsv("data/grades.tsv", show_col_types = FALSE)
+```
+
+# Partie A : les notes et le sexe
+
+## 1. Importer et joindre
+
+```{r}
+#| eval: false
+sexe <- read_tsv("/home/public/tidyverse/grades_sex.tsv")
+```
+
+```{r}
+#| include: false
+sexe <- read_tsv("data/grades_sex.tsv", show_col_types = FALSE)
+```
+
+```{r}
+grades_sexe <- grades |> left_join(sexe, by = "ID_etu")
+nrow(grades)
+nrow(grades_sexe)                          # inchangé : aucune clé en double
+sexe |> count(ID_etu) |> filter(n > 1)     # confirmation
+grades |> anti_join(sexe, by = "ID_etu")   # tous les étudiants ont une correspondance
+```
+
+## 2. Moyenne de E2 par année et par sexe
+
+```{r}
+grades_sexe |>
+  summarise(moyenne_E2 = mean(E2), n = n(), .by = c(Annee, Sex)) |>
+  arrange(Annee, Sex)
+```
+
+Avec 9 à 17 étudiants par groupe, les écarts observés sont à interpréter avec prudence.
+
+# Partie B : les vols au départ de New York
+
+## 3. Nombre de compagnies
+
+```{r}
+nrow(airlines)
+n_distinct(flights$carrier)   # vérification : les compagnies présentes dans flights
+```
+
+## 4. Les 3 compagnies les plus en retard
+
+```{r}
+flights |>
+  left_join(airlines, by = "carrier") |>
+  summarise(retard_moyen = mean(arr_delay, na.rm = TRUE), .by = name) |>
+  slice_max(retard_moyen, n = 3)
+```
+
+`na.rm = TRUE` est nécessaire : les vols annulés n'ont pas de retard à l'arrivée (`NA`).
+
+## 5. Distance et retard par destination
+
+```{r}
+flights |>
+  left_join(airports, by = join_by(dest == faa)) |>
+  summarise(distance_moyenne = mean(distance),
+            retard_moyen = mean(arr_delay, na.rm = TRUE),
+            n_vols = n(),
+            .by = name) |>
+  arrange(desc(retard_moyen))
+```
+
+Un aéroport avec très peu de vols peut avoir un retard moyen extrême : regarder `n_vols` avant de conclure.
+
+## 6. Nombre de destinations et clés sans correspondance
+
+```{r}
+n_distinct(flights$dest)
+
+flights |>
+  anti_join(airports, by = join_by(dest == faa)) |>
+  count(dest)
+```
+
+4 destinations de `flights` (des aéroports de Porto Rico et des Îles Vierges) n'existent pas dans `airports`. Avec `left_join()`, ces vols ont `name = NA` : à la question 5, ils sont regroupés dans une seule ligne `NA`, qui mélange 4 aéroports différents.
+
+# Et si… ?
+
+## 1. `inner_join()` au lieu de `left_join()`
+
+```{r}
+nrow(flights)
+flights |> inner_join(airports, by = join_by(dest == faa)) |> nrow()
+nrow(flights) - nrow(inner_join(flights, airports, by = join_by(dest == faa)))
+```
+
+Les vols vers les 4 destinations absentes de `airports` (question 6) disparaissent, **sans message**. `inner_join()` n'est pas une erreur en soi, mais il faut savoir ce qu'on perd : `anti_join()` le dit.
+
+## 2. Un étudiant en double dans `sexe`
+
+```{r}
+sexe_double <- bind_rows(sexe, sexe[1, ])
+grades |> left_join(sexe_double, by = "ID_etu") |> nrow()
+```
+
+80 lignes au lieu de 79, et **aucun message** : la ligne de `Etu_1` est dupliquée. Ses notes compteront deux fois dans les moyennes de son groupe. C'est la vérification « nombre de lignes avant et après » qui le révèle. Pour exiger qu'une clé soit unique dans `y` :
+
+```{r}
+#| error: true
+grades |> left_join(sexe_double, by = "ID_etu", relationship = "many-to-one")
+```
+
+## 3. Des identifiants en minuscules
+
+```{r}
+sexe_min <- sexe |> mutate(ID_etu = tolower(ID_etu))
+grades |> left_join(sexe_min, by = "ID_etu") |> count(Sex)
+```
+
+Aucune erreur : aucune clé ne correspond (`"Etu_1"` ≠ `"etu_1"`), donc `Sex` vaut `NA` pour les 79 étudiants. `anti_join()` l'aurait signalé immédiatement. On harmonise la clé avant de joindre, par exemple avec `tolower()` des deux côtés.
+
+## 4. Joindre sans `by`
+
+```{r}
+#| error: true
+left_join(flights, airports)
+```
+
+`flights` et `airports` n'ont **aucune colonne de même nom** : `dplyr` ne peut pas deviner la clé et produit une erreur.
+
+```{r}
+left_join(flights, airlines) |> select(carrier, name) |> head(3)
+```
+
+Ici, la seule colonne commune est `carrier` : la jointure fonctionne, avec un message `Joining with by = join_by(carrier)`. Écrivez toujours `by` : si les deux tableaux avaient une autre colonne commune par hasard (par exemple `name`), la jointure se ferait aussi sur elle, sans erreur.

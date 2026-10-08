@@ -1,0 +1,46 @@
+---
+title: "TP2 : plusieurs groupes et régression linéaire"
+metadata-files: [_tp.yml]
+---
+
+# Les données
+
+Les mêmes manchots qu'au TP1 :
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(car)
+manchots <- read_tsv("/home/public/stat/penguins.tsv")
+```
+
+# Rappel : les commandes
+
+| Objectif | Commande |
+|---|---|
+| ANOVA à un facteur | `modele <- aov(y ~ groupe, data = df)` puis `summary(modele)` |
+| Comparaisons deux à deux | `TukeyHSD(modele)` |
+| Version non paramétrique | `kruskal.test(y ~ groupe, data = df)` |
+| Régression linéaire | `modele <- lm(y ~ x, data = df)` puis `summary(modele)` |
+| Résidus | `plot(modele, which = 1:2)` |
+| Corrélation | `cor.test(x, y)`, `cor.test(x, y, method = "spearman")` |
+| Droite sur un nuage de points | `ggplot(df, aes(x, y)) + geom_point() + geom_smooth(method = "lm")` |
+
+# À votre tour
+
+1. Tracez la longueur de la nageoire (`flipper_len`) par espèce (boxplot et points). Faites une ANOVA. Combien vaut `Df` pour `species` ? Pourquoi ? Combien de manchots ont été écartés ?
+2. Quelles espèces diffèrent ? De combien de millimètres les nageoires des Gentoo dépassent-elles celles des Adélie (avec l'intervalle de confiance) ?
+3. Vérifiez les conditions de l'ANOVA : Q-Q plot des résidus (`plot(modele, which = 2)`) et test de Levene. Refaites l'analyse avec Kruskal-Wallis. La conclusion change-t-elle ?
+4. Tracez la masse en fonction de la longueur de la nageoire, avec la droite de régression. Ajustez `lm(body_mass ~ flipper_len)`. Donnez la pente **avec son unité**, le R² et le nombre de manchots utilisés.
+5. Examinez les résidus du modèle de la question 4 (`plot(modele, which = 1:2)`). Les conditions vous paraissent-elles respectées ?
+6. Tracez la profondeur du bec (`bill_dep`) en fonction de sa longueur (`bill_len`), d'abord tous les manchots ensemble, puis en colorant par espèce (`aes(colour = species)`). Ajustez `lm(bill_dep ~ bill_len)`, puis `lm(bill_dep ~ bill_len + species)`. Que devient la pente de `bill_len` ? Comment l'expliquer ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R.
+
+1. Et si on testait l'effet de l'année sur la masse avec `aov(body_mass ~ year, data = manchots)` : que vaut `Df` ? Et avec `factor(year)` ? Lequel est le bon test pour la question « la masse diffère-t-elle selon l'année ? » ?
+2. Et si on comparait les trois espèces avec trois t-tests au lieu d'une ANOVA : quelle est la probabilité d'au moins un faux positif si aucune espèce ne différait ?
+3. Que prédit le modèle de la question 4 pour une nageoire de 150 mm ? Faut-il le croire ?
+4. `cor.test(manchots$bill_len, manchots$bill_dep)` donne une corrélation négative et significative. Peut-on conclure que les manchots à long bec ont un bec moins profond ?
+5. Dans `lm(body_mass ~ species, data = manchots)`, pourquoi n'y a-t-il pas de coefficient `speciesAdelie` ? À quoi correspond l'ordonnée à l'origine ? Vérifiez avec les moyennes par espèce.

@@ -1,0 +1,198 @@
+---
+title: "Solutionnaire du TP3"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(DESeq2)})
+theme_set(theme_minimal())
+knitr::opts_chunk$set(fig.width = 7, fig.height = 4, out.width = "85%", message = FALSE)
+# plotPCA() de DESeq2 utilise une fonction de ggplot2 dépréciée : avertissement sans conséquence
+lifecycle_verbosity <- options(lifecycle_verbosity = "quiet")
+```
+
+# À votre tour
+
+## 0. Importer et vérifier
+
+```{r}
+#| eval: false
+comptes <- read_tsv("/home/public/stat/airway_counts.tsv") |>
+  column_to_rownames("gene") |>
+  as.matrix()
+infos <- read_tsv("/home/public/stat/airway_sample_info.tsv") |>
+  select(Run, cell, dex)
+```
+
+```{r}
+#| echo: false
+# copies locales de /home/public/stat/airway_*.tsv
+comptes <- read_tsv("data/airway_counts.tsv", show_col_types = FALSE) |>
+  column_to_rownames("gene") |>
+  as.matrix()
+infos <- read_tsv("data/airway_sample_info.tsv", show_col_types = FALSE) |>
+  select(Run, cell, dex)
+```
+
+```{r}
+dim(comptes)
+infos
+identical(colnames(comptes), infos$Run)
+```
+
+63 677 gènes, 8 échantillons, dans le même ordre.
+
+## 1. Explorer les comptes
+
+```{r}
+colSums(comptes)
+sum(rowSums(comptes) == 0)
+
+ggplot(tibble(x = comptes[, 1]), aes(log10(x + 1))) +
+  geom_histogram(bins = 50)
+```
+
+`count()` est écrit `dplyr::count()` : DESeq2 charge le package `matrixStats`, qui a aussi une fonction `count()` et masque celle de `dplyr` (voir les messages au chargement).
+
+De 15 à 31 millions de lectures selon l'échantillon : la **profondeur** varie, d'où la normalisation de DESeq2. Près de la moitié des gènes n'ont aucune lecture : ils ne sont pas exprimés dans ce tissu.
+
+## 2. Construire l'objet DESeq2
+
+```{r}
+infos <- infos |>
+  mutate(dex = factor(dex, levels = c("untrt", "trt")),
+         cell = factor(cell))
+levels(infos$dex)
+
+dds <- DESeqDataSetFromMatrix(countData = comptes,
+                              colData = column_to_rownames(infos, "Run"),
+                              design = ~ cell + dex)
+dds <- dds[rowSums(counts(dds)) >= 10, ]
+nrow(dds)
+```
+
+`converting counts to integer mode` : un message, pas une erreur (les comptes ont été lus comme des nombres décimaux). Il reste `r nrow(dds)` gènes.
+
+## 3. Le test
+
+```{r}
+dds <- DESeq(dds)
+res <- results(dds)
+res
+summary(res)
+```
+
+Première ligne : `log2 fold change (MLE): dex trt vs untrt`, le **traité par rapport au non traité**. Un log2FoldChange positif signifie que le gène est **plus exprimé sous dexaméthasone**.
+
+## 4. Compter les gènes DE
+
+```{r}
+sum(res$padj < 0.05, na.rm = TRUE)
+sum(res$padj < 0.05 & abs(res$log2FoldChange) > 1, na.rm = TRUE)
+
+res_tbl <- as.data.frame(res) |>
+  rownames_to_column("gene") |>
+  filter(padj < 0.05, abs(log2FoldChange) > 1)
+dplyr::count(res_tbl, sens = if_else(log2FoldChange > 0, "induit", "réprimé"))
+```
+
+## 5. MA-plot et ACP
+
+```{r}
+plotMA(res, ylim = c(-5, 5))
+
+vsd <- vst(dds, blind = FALSE)
+plotPCA(vsd, intgroup = c("dex", "cell"))
+```
+
+PC1 sépare les traités des non-traités : c'est la principale source de variation. PC2 sépare les lignées : un effet « donneur » réel, qui justifie de l'inclure dans le plan (`~ cell + dex`).
+
+## 6. *Volcano plot*, top 10 et export
+
+```{r}
+res_df <- as.data.frame(res) |>
+  rownames_to_column("gene") |>
+  filter(!is.na(padj)) |>
+  mutate(statut = case_when(padj < 0.05 & log2FoldChange > 1  ~ "induit",
+                            padj < 0.05 & log2FoldChange < -1 ~ "réprimé",
+                            .default = "non DE"))
+
+ggplot(res_df, aes(log2FoldChange, -log10(padj), colour = statut)) +
+  geom_point(alpha = 0.5, size = 0.8) +
+  scale_colour_manual(values = c(induit = "red", `réprimé` = "blue", `non DE` = "grey"))
+
+res_df |>
+  filter(padj < 0.05) |>
+  arrange(desc(log2FoldChange)) |>
+  select(gene, baseMean, log2FoldChange, padj) |>
+  head(10)
+```
+
+```{r}
+#| eval: false
+res_df |> filter(statut != "non DE") |> write_csv("genes_DE_airway.csv")
+```
+
+Parmi les gènes les plus induits, plusieurs ont un `baseMean` faible : un grand log2FoldChange calculé sur peu de lectures est moins fiable. `lfcShrink()` (vignette de DESeq2) corrige cet effet pour classer les gènes.
+
+# Et si… ?
+
+## 1. `sum()` sans `na.rm`
+
+```{r}
+sum(res$padj < 0.05)
+sum(is.na(res$padj))
+```
+
+`NA` : au moins une `padj` est manquante, donc la somme aussi. `r sum(is.na(res$padj))` gènes n'ont pas de `padj` : DESeq2 ne teste pas les gènes trop faiblement exprimés (**filtrage indépendant** : ils n'ont aucune chance d'être significatifs, et les tester alourdirait la correction pour les autres) ni ceux qui ont une valeur aberrante. `NA` ne veut pas dire « non DE » : cela veut dire « non testé ».
+
+## 2. `pvalue` au lieu de `padj`
+
+```{r}
+sum(res$pvalue < 0.05, na.rm = TRUE)
+sum(!is.na(res$pvalue)) * 0.05
+```
+
+`r sum(res$pvalue < 0.05, na.rm = TRUE)` gènes au lieu de `r sum(res$padj < 0.05, na.rm = TRUE)`. Si aucun gène ne réagissait, on en attendrait environ **`r round(sum(!is.na(res$pvalue)) * 0.05)`** sous le seuil de 5 % par le seul hasard (5 % des gènes testés). La `padj` (FDR) limite à environ 5 % la proportion de faux positifs **parmi les gènes retenus**.
+
+## 3. Ignorer l'appariement
+
+```{r}
+dds_dex <- DESeqDataSetFromMatrix(countData = comptes,
+                                  colData = column_to_rownames(infos, "Run"),
+                                  design = ~ dex)
+dds_dex <- DESeq(dds_dex[rowSums(counts(dds_dex)) >= 10, ], quiet = TRUE)
+sum(results(dds_dex)$padj < 0.05, na.rm = TRUE)
+```
+
+Moins de gènes DE : sans `cell`, la variabilité **entre donneurs** reste dans le « bruit » du modèle et masque une partie de l'effet du traitement. C'est le même phénomène que le test indépendant appliqué aux données appariées de `sleep` (TP1).
+
+## 4. Des échantillons dans le désordre
+
+```{r}
+#| error: true
+DESeqDataSetFromMatrix(countData = comptes[, c(2, 1, 3:8)],
+                       colData = column_to_rownames(infos, "Run"),
+                       design = ~ cell + dex)
+```
+
+Une **erreur**, heureusement : DESeq2 compare les noms des colonnes de `countData` à ceux des lignes de `colData` et refuse de continuer. Lisez le message : il donne les deux ordres. Sans noms (une matrice sans `colnames`), aucune vérification ne serait possible : d'où l'intérêt de garder les identifiants.
+
+## 5. Sans fixer le niveau de référence
+
+```{r}
+infos_alpha <- infos |> mutate(dex = factor(as.character(dex)))   # ordre alphabétique
+levels(infos_alpha$dex)
+dds_alpha <- DESeqDataSetFromMatrix(countData = comptes,
+                                    colData = column_to_rownames(infos_alpha, "Run"),
+                                    design = ~ cell + dex)
+dds_alpha <- DESeq(dds_alpha[rowSums(counts(dds_alpha)) >= 10, ], quiet = TRUE)
+res_alpha <- results(dds_alpha)
+mcols(res_alpha)$description[2]
+c(trt_vs_untrt = res["ENSG00000152583", "log2FoldChange"],
+  untrt_vs_trt = res_alpha["ENSG00000152583", "log2FoldChange"])
+```
+
+`trt` vient avant `untrt` dans l'alphabet : le **traité** devient la référence, et la première ligne affiche `dex untrt vs trt`. Tous les log2FoldChange changent de **signe** : *SPARCL1*, fortement induit par la dexaméthasone, apparaîtrait « réprimé ». Les p-values, elles, sont identiques : rien dans les étoiles ne trahit l'erreur. Seule la **lecture de l'en-tête** la révèle.

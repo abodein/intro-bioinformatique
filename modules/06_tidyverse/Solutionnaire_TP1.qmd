@@ -1,0 +1,149 @@
+---
+title: "Solutionnaire du TP1"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+# À votre tour
+
+## 0. Importer les données
+
+```{r}
+#| eval: false
+library(tidyverse)
+grades <- read_tsv("/home/public/tidyverse/grades.tsv")
+```
+
+```{r}
+#| echo: false
+#| message: true
+# copie locale de /home/public/tidyverse/grades.tsv
+grades <- read_tsv("data/grades.tsv")
+```
+
+79 lignes et 9 colonnes. `ID_etu` et `Cohorte` sont du texte (`chr`), les 6 notes et `Annee` sont numériques (`dbl`). On vérifie avec :
+
+```{r}
+glimpse(grades)
+```
+
+## 1. Choisir des colonnes
+
+```{r}
+grades |> select(ID_etu, E1, E2)
+```
+
+## 2. Les étudiants de 2019
+
+```{r}
+grades |> filter(Annee == 2019)
+grades |> filter(Annee == 2019) |> nrow()
+```
+
+## 3. 2019 et Cycle 1
+
+Dans `filter()`, la virgule vaut « et » (`&`) :
+
+```{r}
+grades |> filter(Annee == 2019, Cohorte == "Cycle 1") |> nrow()
+# équivalent : filter(Annee == 2019 & Cohorte == "Cycle 1")
+```
+
+## 4. Ajouter la moyenne des examens
+
+```{r}
+grades |>
+  mutate(moyenne_exam = (E1 + E2) / 2) |>
+  select(ID_etu, E1, E2, moyenne_exam)
+```
+
+## 5. Plus de 90 à l'examen E2
+
+```{r}
+grades |> filter(E2 > 90) |> nrow()
+# autre façon, sans filtrer : TRUE vaut 1 et FALSE vaut 0
+sum(grades$E2 > 90)
+```
+
+## 6. Les 5 meilleures notes à E2
+
+```{r}
+grades |>
+  arrange(desc(E2)) |>
+  select(ID_etu, E2) |>
+  head(5)
+```
+
+`slice_max(E2, n = 5)` donne le même résultat en une étape (et garde les ex aequo).
+
+## 7. Nombre d'étudiants par cohorte et par année
+
+```{r}
+grades |> count(Cohorte)
+grades |> count(Annee)
+```
+
+# Et si… ?
+
+## 1. `Annee == 2019 | 2020`
+
+```{r}
+grades |> filter(Annee == 2019 | 2020) |> nrow()
+```
+
+Les **79** étudiants. R lit `(Annee == 2019) | 2020` : le nombre `2020` est converti en logique, et tout nombre non nul vaut `TRUE`. La condition est donc toujours vraie, sans aucun message. Il faut répéter la colonne, ou utiliser `%in%` :
+
+```{r}
+grades |> filter(Annee == 2019 | Annee == 2020) |> nrow()
+grades |> filter(Annee %in% c(2019, 2020)) |> nrow()
+```
+
+## 2. `Cohorte == c("Cycle 1", "Cycle 2 et 3")`
+
+```{r}
+grades |> filter(Cohorte == c("Cycle 1", "Cycle 2 et 3")) |> nrow()
+```
+
+Non : `==` compare **élément par élément** et recycle le vecteur court. La ligne 1 est comparée à `"Cycle 1"`, la ligne 2 à `"Cycle 2 et 3"`, la ligne 3 à `"Cycle 1"`… On garde environ la moitié des étudiants, au hasard de leur position. Ici, 79 n'est pas un multiple de 2 : R affiche un *warning*. Avec un nombre pair de lignes, il n'y aurait **aucun message**. La bonne écriture :
+
+```{r}
+grades |> filter(Cohorte %in% c("Cycle 1", "Cycle 2 et 3")) |> nrow()
+```
+
+## 3. Moins de 70 ou 70 et plus au devoir D2
+
+```{r}
+grades |> filter(D2 < 70) |> nrow()
+grades |> filter(D2 >= 70) |> nrow()
+grades |> filter(is.na(D2))
+```
+
+La somme fait 78 : l'étudiant `Etu_63` n'a pas de note au devoir 2 (`NA`). Pour lui, `NA < 70` et `NA >= 70` valent tous les deux `NA`, et `filter()` écarte les lignes où la condition n'est pas `TRUE`. Il disparaît **des deux** sélections sans message. Vérification utile : la somme des parties doit faire le tout.
+
+## 4. Oublier d'assigner
+
+```{r}
+grades |> mutate(moyenne_exam = (E1 + E2) / 2) |> head(2)
+grades$moyenne_exam
+```
+
+`mutate()` renvoie un **nouveau** tableau, qui est affiché puis perdu : `grades` n'a pas changé. Le *tibble* avertit que la colonne n'existe pas et renvoie `NULL`. Pour conserver la colonne, il faut assigner le résultat :
+
+```{r}
+#| eval: false
+grades <- grades |> mutate(moyenne_exam = (E1 + E2) / 2)
+```
+
+## 5. Trier avec un `NA`
+
+```{r}
+grades |> arrange(D2) |> select(ID_etu, D2) |> tail(2)
+grades |> arrange(desc(D2)) |> select(ID_etu, D2) |> tail(2)
+```
+
+Dans les deux cas, `Etu_63` est **à la fin** : `arrange()` place toujours les `NA` en dernier, quel que soit le sens du tri.

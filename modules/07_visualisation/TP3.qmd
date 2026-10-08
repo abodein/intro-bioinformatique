@@ -1,0 +1,57 @@
+---
+title: "TP3 : les graphiques d'une analyse d'expression différentielle"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+Ouvrez un **nouveau script** et chargez les packages :
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(ggrepel)     # étiquettes qui ne se chevauchent pas
+library(pheatmap)    # heatmaps
+```
+
+Si R répond `there is no package called 'ggrepel'` : `install.packages("ggrepel")` (une seule fois). Même chose pour `pheatmap`.
+
+# Les données
+
+Une expérience RNA-seq : deux conditions (`cond1`, `cond2`), 3 réplicats chacune.
+
+- `/home/public/visu/de_resultats.csv` : les résultats de l'analyse d'expression différentielle (DESeq2, module 9), un gène par ligne : `gene`, `baseMean` (expression moyenne), `log2FoldChange`, `pvalue`, `padj` (p-value corrigée pour les tests multiples) ;
+- `/home/public/visu/tpm.csv` : l'expression de chaque gène (en TPM, *transcripts per million*) dans les 6 échantillons : `gene`, `cond1_1`, `cond1_2`, `cond1_3`, `cond2_1`, `cond2_2`, `cond2_3`.
+
+# Rappel : les commandes
+
+| Objectif | Commande |
+|---|---|
+| Lignes de repère | `geom_vline(xintercept = c(-1, 1))`, `geom_hline(yintercept = -log10(0.05))` |
+| Catégories selon des seuils | `mutate(statut = case_when(cond1 ~ "a", cond2 ~ "b", .default = "c"))` |
+| Étiquettes d'une sélection | `geom_text_repel(data = top, aes(label = gene))` |
+| Axe logarithmique | `scale_x_log10()` |
+| Matrice pour `pheatmap()` | `column_to_rownames("gene") |> as.matrix()` |
+| Heatmap | `pheatmap(log2(m + 1), scale = "row")` |
+
+# À votre tour
+
+0. Importez les deux fichiers dans `de` et `tpm`. Combien de gènes ? Combien ont une `padj` manquante ? Combien ont `padj < 0.05` ?
+1. Tracez l'histogramme des `pvalue`. Sous l'hypothèse qu'aucun gène ne change, elles seraient uniformes entre 0 et 1. Que voyez-vous ?
+2. Construisez un **volcano plot** : `log2FoldChange` en x, `-log10(padj)` en y. Créez d'abord une colonne `statut` qui vaut `"haut"` (`padj < 0.05` et `log2FoldChange > 1`), `"bas"` (`padj < 0.05` et `log2FoldChange < -1`) ou `"non significatif"`, et colorez les points selon `statut` avec des couleurs choisies.
+3. Ajoutez les seuils en pointillés et le nom des 10 gènes les plus significatifs (`geom_text_repel()`).
+4. Dans quelle condition le gène `ICAM1` (log2FoldChange positif) est-il le plus exprimé ? Vérifiez dans `tpm`. Que représente donc un log2FoldChange positif dans ce fichier ?
+5. Tracez un **MA plot** : `baseMean` en x (échelle logarithmique), `log2FoldChange` en y, les gènes `padj < 0.05` en couleur.
+6. Passez `tpm` en format long (`echantillon`, `tpm`) et tracez un boxplot de `log2(tpm + 1)` par échantillon. Les échantillons sont-ils comparables ?
+7. Tracez la heatmap des 30 gènes les plus significatifs, avec `pheatmap(log2(m + 1), scale = "row")`. Les échantillons se regroupent-ils par condition ?
+8. Pour le gène `CRABP2`, comparez deux graphiques : un barplot de la moyenne par condition, et les 6 valeurs en points. Lequel montre le mieux qu'il n'y a que 3 réplicats ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R.
+
+1. Et si on créait `statut` avec `if_else(padj < 0.05, "signif", "non")` sans retirer les gènes non testés ? Combien de catégories dans la légende ?
+2. Et si on mettait `-log10(pvalue)` en y au lieu de `-log10(padj)` ? Le nuage change-t-il de forme ? Les points de couleur aussi ?
+3. Et si, à la question 6, on traçait `tpm` avec `scale_y_log10()` au lieu de `log2(tpm + 1)` ? Que deviennent les gènes à 0 TPM, et les boxplots ?
+4. Et si on retirait `scale = "row"` de la heatmap ?
+5. Et si on colorait le volcano plot en rouge et vert ? Pour qui est-ce un problème ?

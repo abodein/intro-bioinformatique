@@ -111,12 +111,12 @@ t.test(extra ~ group, data = sleep)$p.value
 
 # apparié : on aligne d'abord les deux mesures de chaque patient
 sommeil <- sleep |>
-  pivot_wider(names_from = group, values_from = extra, names_prefix = "dose_")
+  pivot_wider(names_from = group, values_from = extra, names_prefix = "som_")
 sommeil
-t.test(sommeil$dose_2, sommeil$dose_1, paired = TRUE)
+t.test(sommeil$som_2, sommeil$som_1, paired = TRUE)
 ```
 
-Le test **apparié** est le bon : chaque patient a reçu les deux doses. Il teste les 10 différences individuelles (moyenne 1.58 h), et la variabilité entre patients, très grande, disparaît. Le test indépendant compare deux nuages de points où cette variabilité noie l'effet : p = 0.08 au lieu de 0.003.
+Le test **apparié** est le bon : chaque patient a reçu les deux somnifères. Il teste les 10 différences individuelles (moyenne 1.58 h), et la variabilité entre patients, très grande, disparaît. Le test indépendant compare deux nuages de points où cette variabilité noie l'effet : p = 0.08 au lieu de 0.003.
 
 # Et si… ?
 
@@ -160,7 +160,7 @@ La différence est maintenant **mâles − femelles** : la statistique t et l'in
 
 ```{r}
 set.seed(1)
-t.test(sample(sommeil$dose_2), sommeil$dose_1, paired = TRUE)$p.value
+t.test(sample(sommeil$som_2), sommeil$som_1, paired = TRUE)$p.value
 ```
 
 **Aucun message** : R apparie la 1^re^ valeur avec la 1^re^, la 2^e^ avec la 2^e^… sans savoir à quel patient elles appartiennent. Les différences calculées n'ont plus de sens, et la p-value passe de 0.003 à une valeur non significative. C'est pourquoi on aligne les paires avec `pivot_wider()` sur la colonne `ID`, plutôt que d'extraire deux vecteurs séparément.

@@ -1,0 +1,138 @@
+---
+lang: fr
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 2cm
+      top: 2.6cm
+      bottom: 2.2cm
+    fontsize: 11pt
+    mainfont: "Helvetica Neue"
+    include-in-header: _ulaval.typ
+corrige: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>", message = FALSE)
+Sys.setenv(LANGUAGE = "en")
+options(width = 80)
+suppressPackageStartupMessages({library(tidyverse); library(org.Hs.eg.db)})
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : bases de données et analyses fonctionnelles]
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : bases de données et analyses fonctionnelles — corrigé]
+```
+:::
+
+::: {.content-hidden when-meta="corrige"}
+Répondez **sans exécuter de code**. Le but est de vérifier ce que vous avez compris, pas d'avoir tout juste : on corrige ensemble juste après.
+:::
+
+::: {.content-visible when-meta="corrige"}
+Chaque réponse est suivie de la notion à revoir si elle a été manquée.
+:::
+
+## 1. Où chercher, et que vaut l'information ?
+
+Pour chaque ressource, dites si la base est primaire ou secondaire, et si l'information a été vérifiée par un expert : (a) les lectures FASTQ d'une expérience dans SRA ; (b) une entrée TrEMBL ; (c) l'entrée Swiss-Prot `P38398` ; (d) une voie métabolique de Reactome.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Primaire : données brutes déposées, sans interprétation. (b) Secondaire, annotation **automatique** (traduction de séquences, fonctions prédites). (c) Secondaire, curation **manuelle** : la référence pour *BRCA1*. (d) Secondaire, curation manuelle par des experts. *À revoir : bases primaires et secondaires.*
+:::
+
+## 2. Gene Ontology
+
+Un gène est annoté au terme *cellular response to glucocorticoid stimulus*, dont un ancêtre est *response to steroid hormone*. (a) Dans quelle branche de GO sont ces termes ? (b) Ce gène compte-t-il dans l'ensemble de gènes de *response to steroid hormone* ? Pourquoi ? (c) Son annotation porte le code `IEA` : qu'est-ce que cela signifie ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) **BP**, *Biological Process*. (b) Oui : règle du **chemin vrai**, un gène annoté à un terme l'est aussi à tous ses ancêtres (clé `GOALL`). C'est pourquoi les résultats d'enrichissement sont redondants. (c) *Inferred from Electronic Annotation* : annotation automatique, que personne n'a vérifiée. *À revoir : un graphe, pas un arbre ; les codes d'évidence.*
+:::
+
+## 3. Prédire une conversion
+
+```{r}
+#| eval: false
+ids <- c("ENSG00000096060", "ENSG00000004866", "ENSG00000120129.6")
+conv <- AnnotationDbi::select(org.Hs.eg.db, keys = ids, keytype = "ENSEMBL", columns = "SYMBOL")
+```
+
+`ENSG00000004866` correspond à deux gènes, *ST7* et *ST7-OT3*. (a) Combien de lignes dans `conv` ? (b) Combien de `NA`, et pourquoi ? (c) Que renverrait `mapIds()` avec les mêmes arguments (`column = "SYMBOL"`) ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+#| echo: false
+ids <- c("ENSG00000096060", "ENSG00000004866", "ENSG00000120129.6")
+AnnotationDbi::select(org.Hs.eg.db, keys = ids, keytype = "ENSEMBL", columns = "SYMBOL")
+mapIds(org.Hs.eg.db, keys = ids, keytype = "ENSEMBL", column = "SYMBOL")
+```
+
+(a) **4** lignes : `ENSG00000004866` en donne deux (correspondance 1:n). (b) Un `NA` : la **version** `.6` empêche la correspondance, sans erreur (il faudrait `sub("\\..*", "", ids)`). (c) **3** valeurs, une par clé, dans l'ordre : *FKBP5*, *ST7* (le premier, *ST7-OT3* est écarté sans message), `NA`. *À revoir : `select()` et `mapIds()`.*
+:::
+
+## 4. L'urne
+
+Sur 18 000 gènes testés, 500 sont induits. Un terme GO contient 90 gènes de l'univers, dont 10 sont induits. (a) Combien de gènes induits attendait-on dans ce terme par hasard ? (b) Quel test permet de juger si 10 est « beaucoup » ? (c) Pourquoi ne pas conclure avec la p-value brute ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) n × K / N = 500 × 90 / 18 000 = **2,5** ; on en observe 4 fois plus. (b) Le test **hypergéométrique**, ou test exact de Fisher unilatéral (`alternative = "greater"`). (c) On teste **des milliers** de termes GO : il faut corriger (Benjamini-Hochberg) et lire `p.adjust`. *À revoir : l'urne, des milliers de tests.*
+:::
+
+## 5. Une ORA à vérifier
+
+Un collègue envoie ses 900 gènes DE (induits et réprimés ensemble) à un site web d'enrichissement, sans préciser d'univers. Il obtient *extracellular matrix organization* avec p = 0.003 et conclut : « le traitement active l'organisation de la matrice extracellulaire ». Relevez trois problèmes.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.4cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(1) **Pas d'univers** : par défaut, tous les gènes du génome, y compris ceux qui ne sont pas exprimés ; l'enrichissement est surestimé. Univers = les gènes testés. (2) Induits et réprimés **mélangés** : on ne sait pas dans quel sens la fonction change, et des signaux nets dans un sens peuvent être dilués. Une ORA par sens. (3) p = 0.003 est-elle **ajustée** ? Avec des milliers de termes, une p-value brute de 0.003 n'a rien d'exceptionnel. Et « enrichi » ne veut pas dire « activé ». *À revoir : pièges de l'univers et du mélange des sens.*
+:::
+
+## 6. Lire une GSEA
+
+Une GSEA sur des résultats DESeq2 (en-tête : `dex trt vs untrt`), avec les gènes classés par `stat`, donne pour *response to glucocorticoid* : NES = 1.83, p.adjust = 0.009. (a) Les gènes de cet ensemble sont-ils plutôt plus ou moins exprimés sous traitement ? (b) Une collègue obtient NES = −1.83 sur les mêmes données. Donnez une explication. (c) Pourquoi la GSEA peut-elle détecter cet ensemble même si peu de ses gènes passent le seuil `padj` < 0.05 ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.4cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) **Plus** exprimés : NES > 0, l'ensemble est en haut d'un classement qui va du plus induit au plus réprimé. (b) Son contraste est inversé (`untrt vs trt`, niveau de référence alphabétique) ou elle a classé par `-stat` : tous les NES changent de signe, avec des p-values quasi identiques (aux permutations près), **sans erreur**. (c) La GSEA n'utilise **pas de seuil** : elle détecte qu'un ensemble est décalé vers le haut du classement, même si chaque gène ne bouge que modestement. *À revoir : lire le signe du NES ; ORA ou GSEA ?*
+:::

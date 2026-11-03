@@ -1,0 +1,223 @@
+---
+title: "Solutionnaire du TP2"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(org.Hs.eg.db); library(clusterProfiler); library(enrichplot)})
+theme_set(theme_minimal())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 5, out.width = "85%", message = FALSE)
+```
+
+# À votre tour
+
+## 0. Préparer les listes
+
+```{r}
+#| eval: false
+res <- read_tsv("/home/public/enrichissement/airway_deseq2.tsv")
+```
+
+```{r}
+#| echo: false
+# copie locale de /home/public/enrichissement/airway_deseq2.tsv
+res <- read_tsv("data/airway_deseq2.tsv", show_col_types = FALSE)
+```
+
+```{r}
+testes   <- res |> filter(!is.na(padj))
+de       <- testes |> filter(padj < 0.05, abs(log2FoldChange) > 1)
+induits  <- de |> filter(log2FoldChange > 0)
+reprimes <- de |> filter(log2FoldChange < 0)
+c(univers = nrow(testes), induits = nrow(induits), reprimes = nrow(reprimes))
+```
+
+L'univers, ce sont les gènes **testés** : ceux qui auraient pu se retrouver dans la liste.
+
+## 1. L'ORA à la main
+
+```{r}
+gc <- AnnotationDbi::select(org.Hs.eg.db, keys = "GO:0051384", keytype = "GOALL",
+                            columns = "ENSEMBL")
+dans_go <- unique(gc$ENSEMBL)
+
+N <- nrow(testes)                        # l'univers
+K <- sum(testes$gene %in% dans_go)       # gènes de l'univers dans le terme
+n <- nrow(induits)                       # la liste
+k <- sum(induits$gene %in% dans_go)      # gènes de la liste dans le terme
+c(N = N, K = K, n = n, k = k, attendu = n * K / N)
+
+tab <- matrix(c(k, K - k, n - k, N - K - (n - k)), nrow = 2,
+              dimnames = list(c("induit", "non induit"), c("dans le terme", "hors du terme")))
+tab
+fisher.test(tab, alternative = "greater")$p.value
+phyper(k - 1, K, N - K, n, lower.tail = FALSE)
+```
+
+`r k` gènes induits dans le terme, pour `r round(n * K / N, 1)` attendus par hasard. `phyper(k - 1, …, lower.tail = FALSE)` donne P(X ≥ k) : la même p-value que le test de Fisher unilatéral. `GOALL` (et non `GO`) inclut les gènes annotés aux **descendants** du terme (règle du chemin vrai).
+
+## 2. `enrichGO()` sur les induits
+
+```{r}
+ora_induits <- enrichGO(gene = induits$gene, universe = testes$gene, OrgDb = org.Hs.eg.db,
+                        keyType = "ENSEMBL", ont = "BP", readable = TRUE)
+nrow(as_tibble(ora_induits))
+as_tibble(ora_induits) |>
+  filter(ID == "GO:0051384") |>
+  dplyr::select(Description, GeneRatio, BgRatio, p.adjust, geneID)
+dotplot(ora_induits, showCategory = 12)
+```
+
+Le dénominateur de `GeneRatio` est le nombre de gènes induits qui ont **au moins une annotation GO BP** ; celui de `BgRatio`, le nombre de gènes de l'univers annotés. Les gènes sans annotation sont retirés **sans message** : N, n et la p-value diffèrent donc de notre calcul à la main. La `p.adjust` est ajustée pour les milliers de termes testés.
+
+## 3. Les réprimés
+
+```{r}
+ora_reprimes <- enrichGO(gene = reprimes$gene, universe = testes$gene, OrgDb = org.Hs.eg.db,
+                         keyType = "ENSEMBL", ont = "BP", readable = TRUE)
+nrow(as_tibble(ora_reprimes))
+as_tibble(ora_reprimes) |> dplyr::select(Description, GeneRatio, p.adjust) |> head(5)
+```
+
+## 4. La GSEA
+
+```{r}
+classement <- testes |> arrange(desc(stat))
+liste_gsea <- setNames(classement$stat, classement$gene)
+head(liste_gsea)
+
+gsea_go <- gseGO(geneList = liste_gsea, OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP",
+                 minGSSize = 15, maxGSSize = 500, seed = TRUE)
+gs <- as_tibble(gsea_go)
+nrow(gs)
+dplyr::count(gs, sens = if_else(NES > 0, "NES > 0", "NES < 0"))
+```
+
+Le classement va du gène le plus **induit** (stat positive et forte) au plus **réprimé**, puisque `res` compare `dex trt vs untrt`. NES > 0 : les gènes de l'ensemble sont en haut du classement, plutôt plus exprimés sous dexaméthasone ; NES < 0 : plutôt moins exprimés. L'avertissement `There are ties in the preranked stats` signale des gènes à égalité, dont l'ordre sera arbitraire.
+
+## 5. Le graphique de GSEA
+
+```{r}
+gs |> filter(ID == "GO:0051384") |> dplyr::select(Description, setSize, NES, p.adjust)
+gseaplot2(gsea_go, geneSetID = "GO:0051384", title = "response to glucocorticoid")
+dotplot(gsea_go, showCategory = 6, split = ".sign") + facet_grid(.sign ~ ., scales = "free_y")
+```
+
+Les traits (gènes de l'ensemble) se concentrent à **gauche**, en haut du classement : la somme courante monte d'abord, et son pic donne un ES positif. La réponse aux glucocorticoïdes est induite par… un glucocorticoïde : un **contrôle positif** rassurant.
+
+## 6. Comparer et exporter
+
+```{r}
+communs <- intersect(as_tibble(ora_induits)$ID, gs$ID[gs$NES > 0])
+length(communs)
+```
+
+```{r}
+#| eval: false
+write_csv(gs, "gsea_go_airway.csv")
+```
+
+Les deux méthodes se recoupent en partie seulement : l'ORA voit les gènes au-delà du seuil, la GSEA des décalages d'ensemble, même modestes.
+
+## 7. Les Hallmarks
+
+```{r}
+#| eval: false
+hallmarks <- read.gmt("/home/public/enrichissement/h.all.Hs.ensembl.gmt")
+```
+
+```{r}
+#| echo: false
+# copie locale de /home/public/enrichissement/h.all.Hs.ensembl.gmt
+hallmarks <- read.gmt("data/h.all.Hs.ensembl.gmt")
+```
+
+```{r}
+n_distinct(hallmarks$term)
+nrow(hallmarks)
+gsea_h <- GSEA(geneList = liste_gsea, TERM2GENE = hallmarks, seed = TRUE)
+gh <- as_tibble(gsea_h)
+gh |> dplyr::select(ID, setSize, NES, p.adjust) |> arrange(desc(NES))
+```
+
+`read.gmt()` renvoie un tableau à deux colonnes (`term`, `gene`), une ligne par couple ensemble-gène : c'est exactement le format attendu par `TERM2GENE`. `r nrow(gh)` Hallmarks sur 50 sont significatifs. C'est un bon point de départ : 50 ensembles **peu redondants**, chacun résumant un processus bien défini, donc une liste courte et lisible, que l'on affine ensuite avec GO ou Reactome. L'adipogenèse arrive en tête : la dexaméthasone fait partie des cocktails utilisés pour différencier les adipocytes en culture.
+
+## 8. Un ensemble « inflammatoire » induit par un anti-inflammatoire
+
+```{r}
+nfkb <- gh |> filter(ID == "HALLMARK_TNFA_SIGNALING_VIA_NFKB")
+nfkb |> dplyr::select(setSize, NES, p.adjust)
+moteurs <- mapIds(org.Hs.eg.db, keys = str_split_1(nfkb$core_enrichment, "/"),
+                  keytype = "ENSEMBL", column = "SYMBOL")
+length(moteurs)
+unname(moteurs)
+```
+
+Parmi les gènes moteurs : *DUSP1*, *NFKBIA* (l'inhibiteur direct de NF-κB), *TNFAIP3* (A20), *ZFP36* (tristétraproline), *TNIP1*, *TNIP2*. Ce sont des **freins** de la voie NF-κB, que les glucocorticoïdes induisent justement pour éteindre l'inflammation. L'ensemble « TNFα via NF-κB » réunit les gènes qui **répondent** à NF-κB, y compris ceux du rétrocontrôle négatif. Un NES positif dit que ces gènes sont plus exprimés, pas que la voie est plus **active**. Il faut toujours lire les gènes moteurs avant de conclure.
+
+# Et si… ?
+
+## 1. Sans univers
+
+```{r}
+ora_sans_univers <- enrichGO(gene = induits$gene, OrgDb = org.Hs.eg.db,
+                             keyType = "ENSEMBL", ont = "BP")
+as_tibble(ora_sans_univers)$BgRatio[1]
+c(avec_univers = nrow(as_tibble(ora_induits)), sans_univers = nrow(as_tibble(ora_sans_univers)))
+```
+
+Sans `universe`, l'urne contient **tous** les gènes humains annotés, y compris ceux qui ne sont pas exprimés dans ces cellules et ne pouvaient donc pas être DE. Les termes dont les gènes sont simplement exprimés dans ce tissu paraissent enrichis : plus de termes « significatifs », pas plus d'information sur le traitement.
+
+## 2. Induits et réprimés ensemble
+
+```{r}
+ora_tous <- enrichGO(gene = de$gene, universe = testes$gene, OrgDb = org.Hs.eg.db,
+                     keyType = "ENSEMBL", ont = "BP")
+"GO:0051384" %in% as_tibble(ora_tous)$ID
+```
+
+`GO:0051384` n'est **plus** significatif : ses 11 gènes induits sont dilués dans une liste deux fois plus longue, où les gènes réprimés ne sont presque pas dans le terme. Une ORA mélangée perd des signaux nets dans un sens, et ne dit plus dans quel sens la fonction change.
+
+## 3. Sans correction
+
+```{r}
+ora_brute <- enrichGO(gene = induits$gene, universe = testes$gene, OrgDb = org.Hs.eg.db,
+                      keyType = "ENSEMBL", ont = "BP", pAdjustMethod = "none",
+                      pvalueCutoff = 0.05, qvalueCutoff = 1)
+nrow(as_tibble(ora_brute))
+n_termes_testes <- nrow(ora_brute@result)
+round(n_termes_testes * 0.05)
+```
+
+`r nrow(as_tibble(ora_brute))` termes au lieu de `r nrow(as_tibble(ora_induits))`. Sur les `r n_termes_testes` termes testés, environ `r round(n_termes_testes * 0.05)` passeraient le seuil de 5 % par le seul hasard.
+
+## 4. Mauvais ordre, mauvais signe
+
+```{r}
+#| error: true
+gseGO(geneList = sort(liste_gsea), OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP")
+```
+
+Un tri croissant produit une **erreur** : `gseGO()` vérifie l'ordre. Mais `-stat` (ce qu'on obtient avec `untrt vs trt`) donne une liste tout aussi décroissante, donc **aucune erreur** :
+
+```{r}
+liste_inverse <- sort(-liste_gsea, decreasing = TRUE)
+gsea_inv <- gseGO(geneList = liste_inverse, OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP",
+                  minGSSize = 15, maxGSSize = 500, seed = TRUE)
+as_tibble(gsea_inv) |> filter(ID == "GO:0051384") |> dplyr::select(Description, NES, p.adjust)
+```
+
+Le NES change de **signe** : la réponse aux glucocorticoïdes paraîtrait réprimée par un glucocorticoïde. Lire l'en-tête de `res` **avant** l'enrichissement.
+
+## 5. Classer par log2FoldChange
+
+```{r}
+par_lfc <- testes |> arrange(desc(log2FoldChange)) |> head(10)
+par_stat <- testes |> arrange(desc(stat)) |> head(10)
+par_lfc |> dplyr::select(gene, baseMean, log2FoldChange, stat)
+length(intersect(par_lfc$gene, par_stat$gene))
+```
+
+En tête du classement par log2FoldChange, des gènes **peu exprimés** (faible `baseMean`) dont l'effet est grand mais très incertain. `stat` = log2FC / erreur standard combine l'**effet** et la **précision** : un gène très induit mais mal mesuré n'arrive pas en tête.

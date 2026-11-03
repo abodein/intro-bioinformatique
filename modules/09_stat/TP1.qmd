@@ -31,7 +31,7 @@ Le fichier `/home/public/stat/penguins.tsv` décrit 344 manchots de l'archipel P
 | `sex` | `female` ou `male` |
 | `year` | année de la mesure |
 
-Vous utiliserez aussi `sleep`, un jeu de données inclus dans R : le sommeil gagné (`extra`, en heures) par 10 patients (`ID`) avec deux doses d'un somnifère (`group`). **Chaque patient a reçu les deux doses.**
+Vous utiliserez aussi `sleep`, un jeu de données inclus dans R : le sommeil gagné (`extra`, en heures) par 10 patients (`ID`) avec deux somnifères (`group`). **Chaque patient a reçu les deux somnifères.**
 
 # Rappel : les commandes
 
@@ -52,7 +52,7 @@ Vous utiliserez aussi `sleep`, un jeu de données inclus dans R : le sommeil gag
 3. Faites le test de Shapiro-Wilk pour chaque sexe, puis le test de Levene. Que concluez-vous ?
 4. Comparez la masse des mâles et des femelles Adélie avec `t.test()`. Écrivez une phrase de conclusion qui donne **la différence**, son **intervalle de confiance** et la p-value.
 5. Refaites la comparaison avec `wilcox.test()`. La conclusion change-t-elle ?
-6. Avec `sleep` : tracez un point par patient et par dose, reliés par patient (`geom_line(aes(group = ID))`). Faites le test **indépendant**, puis le test **apparié** (passez d'abord en format large avec `pivot_wider()`). Pourquoi les p-values sont-elles si différentes ? Lequel est juste ?
+6. Avec `sleep` : tracez un point par patient et par somnifère, reliés par patient (`geom_line(aes(group = ID))`). Faites le test **indépendant**, puis le test **apparié** (passez d'abord en format large avec `pivot_wider()`). Pourquoi les p-values sont-elles si différentes ? Lequel est juste ?
 
 # Et si… ?
 
@@ -62,4 +62,4 @@ Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vé
 2. Et si on voulait comparer les trois espèces avec `t.test(body_mass ~ species, data = manchots)` ? Lisez le message.
 3. Comparez la masse des Adélie et des Chinstrap. Peut-on conclure que les deux espèces ont **la même** masse ? Que dit l'intervalle de confiance ?
 4. Et si on changeait l'ordre des niveaux, `mutate(sex = factor(sex, levels = c("male", "female")))`, avant le t-test de la question 4 : qu'est-ce qui change dans la sortie ? Qu'est-ce qui ne change pas ?
-5. Et si, dans le test apparié de `sleep`, les valeurs de la dose 2 étaient dans le désordre (`sample(sommeil$dose_2)`) : R signale-t-il un problème ? Que devient la p-value ?
+5. Et si, dans le test apparié de `sleep`, les valeurs du somnifère 2 étaient dans le désordre (`sample(sommeil$som_2)`) : R signale-t-il un problème ? Que devient la p-value ?

@@ -3169,7 +3169,7 @@ vertical-align: -.125em;
 </tr>
 </tbody>
 </table>
-<p>Vous utiliserez aussi <code>sleep</code>, un jeu de données inclus dans R : le sommeil gagné (<code>extra</code>, en heures) par 10 patients (<code>ID</code>) avec deux doses d’un somnifère (<code>group</code>). <strong>Chaque patient a reçu les deux doses.</strong></p>
+<p>Vous utiliserez aussi <code>sleep</code>, un jeu de données inclus dans R : le sommeil gagné (<code>extra</code>, en heures) par 10 patients (<code>ID</code>) avec deux somnifères (<code>group</code>). <strong>Chaque patient a reçu les deux somnifères.</strong></p>
 </section>
 <section id="rappel-les-commandes" class="level1">
 <h1>Rappel : les commandes</h1>
@@ -3221,7 +3221,7 @@ vertical-align: -.125em;
 <li>Faites le test de Shapiro-Wilk pour chaque sexe, puis le test de Levene. Que concluez-vous ?</li>
 <li>Comparez la masse des mâles et des femelles Adélie avec <code>t.test()</code>. Écrivez une phrase de conclusion qui donne <strong>la différence</strong>, son <strong>intervalle de confiance</strong> et la p-value.</li>
 <li>Refaites la comparaison avec <code>wilcox.test()</code>. La conclusion change-t-elle ?</li>
-<li>Avec <code>sleep</code> : tracez un point par patient et par dose, reliés par patient (<code>geom_line(aes(group = ID))</code>). Faites le test <strong>indépendant</strong>, puis le test <strong>apparié</strong> (passez d’abord en format large avec <code>pivot_wider()</code>). Pourquoi les p-values sont-elles si différentes ? Lequel est juste ?</li>
+<li>Avec <code>sleep</code> : tracez un point par patient et par somnifère, reliés par patient (<code>geom_line(aes(group = ID))</code>). Faites le test <strong>indépendant</strong>, puis le test <strong>apparié</strong> (passez d’abord en format large avec <code>pivot_wider()</code>). Pourquoi les p-values sont-elles si différentes ? Lequel est juste ?</li>
 </ol>
 </section>
 <section id="et-si" class="level1">
@@ -3232,7 +3232,7 @@ vertical-align: -.125em;
 <li>Et si on voulait comparer les trois espèces avec <code>t.test(body_mass ~ species, data = manchots)</code> ? Lisez le message.</li>
 <li>Comparez la masse des Adélie et des Chinstrap. Peut-on conclure que les deux espèces ont <strong>la même</strong> masse ? Que dit l’intervalle de confiance ?</li>
 <li>Et si on changeait l’ordre des niveaux, <code>mutate(sex = factor(sex, levels = c(&quot;male&quot;, &quot;female&quot;)))</code>, avant le t-test de la question 4 : qu’est-ce qui change dans la sortie ? Qu’est-ce qui ne change pas ?</li>
-<li>Et si, dans le test apparié de <code>sleep</code>, les valeurs de la dose 2 étaient dans le désordre (<code>sample(sommeil$dose_2)</code>) : R signale-t-il un problème ? Que devient la p-value ?</li>
+<li>Et si, dans le test apparié de <code>sleep</code>, les valeurs du somnifère 2 étaient dans le désordre (<code>sample(sommeil$som_2)</code>) : R signale-t-il un problème ? Que devient la p-value ?</li>
 </ol>
 </section>
 

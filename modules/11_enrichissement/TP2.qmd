@@ -1,0 +1,66 @@
+---
+title: "TP2 : analyses d'enrichissement (ORA et GSEA)"
+metadata-files: [_tp.yml]
+---
+
+# Avant de débuter
+
+`clusterProfiler` et `enrichplot` sont des packages **Bioconductor**, installés sur le serveur. Sur votre ordinateur : `BiocManager::install(c("clusterProfiler", "enrichplot"))`.
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+library(enrichplot)
+```
+
+Chaque appel à `enrichGO()` prend de 30 secondes à une minute : c'est normal, il teste des milliers de termes GO.
+
+# Les données
+
+Le même fichier qu'au TP1, `/home/public/enrichissement/airway_deseq2.tsv`, et les 50 ensembles **Hallmarks** de MSigDB au format GMT, `/home/public/enrichissement/h.all.Hs.ensembl.gmt` (identifiants Ensembl). Préparez quatre objets :
+
+```{r}
+#| eval: false
+res <- read_tsv("/home/public/enrichissement/airway_deseq2.tsv")
+testes   <- res |> filter(!is.na(padj))                                   # l'univers
+de       <- testes |> filter(padj < 0.05, abs(log2FoldChange) > 1)
+induits  <- de |> filter(log2FoldChange > 0)
+reprimes <- de |> filter(log2FoldChange < 0)
+```
+
+# Rappel : les fonctions
+
+```{r}
+#| eval: false
+# ORA : une liste de gènes, un univers
+enrichGO(gene = ..., universe = ..., OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP", readable = TRUE)
+# GSEA : un vecteur nommé (noms = identifiants), trié par ordre décroissant
+gseGO(geneList = ..., OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP", seed = TRUE)
+# GSEA avec ses propres ensembles (fichier GMT lu par read.gmt())
+GSEA(geneList = ..., TERM2GENE = ..., seed = TRUE)
+# Résultats en tableau : as_tibble(objet) ; graphiques : dotplot(), gseaplot2()
+```
+
+# À votre tour
+
+0. Combien de gènes dans l'univers, dans la liste des induits, dans celle des réprimés ?
+1. **À la main.** Récupérez les gènes (Ensembl) annotés au terme `GO:0051384` (*response to glucocorticoid*) ou à ses descendants : `AnnotationDbi::select(org.Hs.eg.db, keys = "GO:0051384", keytype = "GOALL", columns = "ENSEMBL")`. Calculez N, K, n et k pour les gènes **induits**. Combien de gènes induits attendait-on dans ce terme par hasard ? Construisez le tableau de contingence 2 × 2 et faites un `fisher.test(..., alternative = "greater")`. Vérifiez avec `phyper()`.
+2. Lancez `enrichGO()` sur les gènes **induits**, avec les gènes testés comme univers. Combien de termes significatifs ? Retrouvez la ligne de `GO:0051384` : que valent `GeneRatio`, `BgRatio`, `p.adjust` ? Pourquoi le dénominateur de `GeneRatio` n'est-il pas le nombre de gènes induits ? Tracez le `dotplot()`.
+3. Même analyse sur les gènes **réprimés**. Quels sont les 5 premiers termes ?
+4. **GSEA.** Construisez un vecteur des `stat` des gènes testés, nommé par leur identifiant, trié par ordre décroissant. Lancez `gseGO()` (`minGSSize = 15`, `maxGSSize = 500`, `seed = TRUE`). Combien de termes significatifs ? Combien avec NES > 0, NES < 0 ? Que signifie le signe ?
+5. Tracez `gseaplot2()` pour `GO:0051384`. Où sont ses gènes dans le classement ? Que valent son NES et sa `p.adjust` ? Tracez le `dotplot(..., split = ".sign")`.
+6. Comparez : combien de termes sont significatifs **à la fois** dans l'ORA des induits et dans la GSEA avec NES > 0 ? Exportez le tableau de la GSEA avec `write_csv()`.
+7. **Hallmarks.** Importez le fichier GMT avec `read.gmt()`. Combien d'ensembles, de lignes ? Lancez `GSEA()` avec la même liste classée et `TERM2GENE = hallmarks`. Quels Hallmarks sont significatifs, dans quel sens ? Pourquoi est-ce un bon point de départ, comparé aux centaines de termes GO ?
+8. *HALLMARK_TNFA_SIGNALING_VIA_NFKB* a un NES positif, alors que la dexaméthasone est un **anti-inflammatoire**. Convertissez en symboles les gènes moteurs (`core_enrichment`) de cet ensemble. Que remarquez-vous ? Que vous apprend cet exemple sur le mot « activé » ?
+
+# Et si… ?
+
+Pour chaque question, **prédisez d'abord la réponse sans exécuter**, puis vérifiez dans R.
+
+1. Et si on oubliait l'argument `universe` dans `enrichGO()` (question 2) ? Que devient le dénominateur de `BgRatio` ? Le nombre de termes significatifs ?
+2. Et si on faisait une seule ORA avec tous les gènes DE, induits et réprimés ensemble ? `GO:0051384` est-il encore significatif ? Pourquoi ?
+3. Et si on gardait les termes selon leur p-value **brute** (`pAdjustMethod = "none"`) ? Combien de termes « significatifs » ? Combien de faux positifs attendrait-on par hasard ?
+4. Et si la liste de la GSEA était triée par ordre **croissant** ? Et si on utilisait `-stat` (comme avec `untrt` en référence) ? Que deviendrait le NES de `GO:0051384` ?
+5. Et si on classait les gènes par `log2FoldChange` au lieu de `stat` ? Les gènes en tête de liste sont-ils les mêmes ? Pourquoi `stat` est-il un meilleur choix ?

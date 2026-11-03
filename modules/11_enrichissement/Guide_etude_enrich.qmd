@@ -1,0 +1,100 @@
+---
+title: "Guide d'étude : bases de données et analyses fonctionnelles"
+subtitle: "Ce qu'il faut savoir faire pour les oraux et l'évaluation sur table"
+metadata-files: [_tp.yml]
+---
+
+# Ce que ce module ajoute
+
+Le module de statistiques s'arrêtait sur un tableau : un millier de gènes différentiellement exprimés, désignés par des identifiants `ENSG…`. Ce module apprend à l'**interpréter** : savoir où chercher l'information sur un gène et ce qu'elle vaut, relier les identifiants des différentes bases, puis passer d'une liste de gènes à quelques **fonctions** biologiques, par une analyse de sur-représentation (ORA) ou une GSEA.
+
+Comme au module précédent, les erreurs sont presque toutes **silencieuses** : une conversion qui duplique des gènes ou en perd, un identifiant versionné qui ne correspond à rien, un symbole transformé en date par Excel, un univers laissé par défaut, des gènes induits et réprimés mélangés, un niveau de référence qui inverse le signe de tous les scores d'enrichissement. Aucune n'arrête R, et un assistant d'IA ne peut pas les éviter à votre place : il ne connaît ni votre plan d'expérience, ni l'univers de vos gènes, ni la version de vos annotations.
+
+# Comment ce module est évalué
+
+Comme le reste du cours, **en présence et sans outil d'IA** :
+
+- à l'**évaluation sur table** (50 % de la note du cours) : [À PRÉCISER : sur papier ou en salle informatique surveillée, durée, documents permis] ;
+- lors des **oraux** individuels (25 % chacun) : [À PRÉCISER : quel oral porte sur ce module].
+
+On ne vous demandera pas de retenir des URL ni la liste des bases. On vérifiera que vous savez **lire** une sortie (`select()`, `enrichGO()`, `gseGO()`), **prédire** le résultat d'une conversion ou d'un réglage, **calculer** un nombre attendu par hasard, et **repérer** une conclusion fausse.
+
+# Les types de questions
+
+| Type | Ce qu'on vous demande | Exemple déjà vu |
+|---|---|---|
+| **Prédire** | Donner le résultat sans exécuter | Le nombre de lignes de `select()` sur 3 identifiants dont un versionné (diapos) |
+| **Erreur** | Expliquer pourquoi un résultat est faux | Une ORA sans univers, avec une p-value brute (diapos « À vous : lire une ORA ») |
+| **Et si** | Anticiper l'effet d'une modification | Classer la GSEA par `-stat` (TP2) |
+| **Expliquer** | Justifier un concept avec vos mots | Pourquoi l'univers doit être les gènes testés (diapos, TP2) |
+| **Lire** | Interpréter une sortie de R | `GeneRatio`, `BgRatio`, NES, `gseaplot2()` (diapos, TP2) |
+| **Calculer** | Un ordre de grandeur, à la main | Le nombre attendu n × K / N (diapos, TP2) |
+
+À l'oral, chaque réponse est suivie d'une **relance** : « pourquoi ? », « comment l'auriez-vous vérifié ? ».
+
+# Ce que vous devez savoir faire
+
+## E-BDD : les bases de données
+
+- Distinguer base **primaire** (données brutes déposées : GenBank, SRA, GEO, PDB) et **secondaire** (données interprétées : UniProtKB, Reactome, KEGG, GO).
+- Distinguer curation **manuelle** (Swiss-Prot) et **automatique** (TrEMBL, annotations `IEA`) ; dire pourquoi c'est important.
+- Citer les limites : erreurs propagées, redondance, biais (organismes et gènes déjà étudiés), **versions**.
+- Construire une requête avec des opérateurs booléens et des champs.
+
+*Où le travailler :* section 2 des diapos (pause « À vous : primaire ou secondaire ? »), exercice formatif Q1.
+
+## E-ONT : les ontologies
+
+- Expliquer ce qu'est une ontologie et à quoi sert un vocabulaire contrôlé.
+- Donner les trois branches de GO (MF, CC, BP) avec un exemple chacune.
+- Expliquer le graphe orienté acyclique et la **règle du chemin vrai** ; en déduire la **redondance** des résultats d'enrichissement.
+- Lire un code d'évidence (`IEA` contre `IDA`, `IMP`…).
+
+*Où le travailler :* section 3 des diapos, TP1 (Q6, Q7), exercice formatif Q2.
+
+## E-IDS : identifiants et conversion
+
+- Reconnaître un symbole HGNC, un identifiant Entrez, Ensembl (`ENSG…`, version), UniProt.
+- Utiliser `AnnotationDbi::select()` (un tableau, correspondances **1:n**) et `mapIds()` (une valeur par clé, `multiVals`).
+- Prédire les `NA` (identifiant versionné, gène absent de la base) et les **doublons** ; savoir qu'une jointure 1:n gonfle les comptes.
+- Expliquer l'affaire Excel (*SEPT2*, *MARCH1*) et pourquoi un ancien symbole peut désigner deux gènes.
+- Lire la **version** d'une base d'annotation (`AnnotationDbi::metadata()`).
+- Éviter le piège de `select()` masqué (`dplyr::select()` contre `AnnotationDbi::select()`).
+
+*Où le travailler :* section 4 des diapos (pause « À vous : prédire une conversion »), TP1, exercice formatif Q3.
+
+## E-ORA : l'analyse de sur-représentation
+
+- Poser l'urne : N, K, n, k ; calculer le nombre **attendu** n × K / N ; savoir que le test est hypergéométrique (Fisher unilatéral).
+- Expliquer pourquoi corriger (des milliers de termes) et lire `p.adjust`.
+- Lire `GeneRatio` et `BgRatio`, et expliquer pourquoi leurs dénominateurs ne sont pas la taille de la liste et de l'univers.
+- Choisir l'**univers** (les gènes testés) et expliquer ce qui se passe sans.
+- Expliquer pourquoi on fait **une ORA par sens**, et pourquoi « enrichi » ne veut pas dire « activé ».
+- Citer les limites de l'ORA (seuil, poids égal, indépendance, biais de longueur).
+
+*Où le travailler :* section 5 des diapos (pause « À vous : lire une ORA »), TP2 (Q1 à Q3, « Et si… ? » 1 à 3), exercice formatif Q4 et Q5.
+
+## E-GSE : la GSEA
+
+- Expliquer le principe : tous les gènes, **classés**, une somme courante, un ES, des permutations, un NES.
+- Construire la liste : un vecteur nommé, trié par ordre **décroissant**, d'une statistique signée (`stat`).
+- Lire le **signe** du NES et le relier au niveau de référence de l'analyse différentielle.
+- Lire un graphique de GSEA (somme courante, traits, *leading edge*).
+- Choisir entre ORA et GSEA selon les données disponibles.
+- Connaître MSigDB et le format GMT ; faire une GSEA sur les **Hallmarks** (`read.gmt()`, `GSEA(..., TERM2GENE = )`), un bon point de départ ; lire les **gènes moteurs** avant de conclure.
+
+*Où le travailler :* section 6 des diapos (pause « À vous : lire une GSEA »), TP2 (Q4 à Q8, « Et si… ? » 4 et 5), exercice formatif Q6.
+
+## E-AUD : vérifier une analyse fonctionnelle
+
+- Devant une analyse d'enrichissement, demander : quel **univers** ? quelle **liste** (un sens ou les deux) ? quelle **correction** ? quelle **version** des annotations ? quel **sens** de comparaison ?
+- Repérer les gènes perdus ou dupliqués lors d'une conversion.
+
+*Où le travailler :* les diapos « Piège » (l'univers, mélanger induits et réprimés, `select()` masqué), les « Et si… ? » des deux TP.
+
+# Comment vous préparer
+
+1. **Refaites sans ordinateur** les pauses « À vous », les « Et si… ? » des TP et l'exercice formatif : écrivez votre prédiction, *puis* vérifiez dans RStudio.
+2. Devant chaque conversion d'identifiants, prenez l'habitude de compter : **combien de lignes** avant et après ? **combien de `NA`** ? **combien de doublons** ?
+3. Devant chaque résultat d'enrichissement, répondez à quatre questions : quel **univers** ? quelle **liste** ? **combien attendus** par hasard ? **dans quel sens** ?
+4. Les solutionnaires des TP donnent les réponses et les explications : lisez surtout les explications.

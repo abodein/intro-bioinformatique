@@ -47,27 +47,27 @@ adelie <- manchots |> filter(species == "Adelie", !is.na(sex))
 
 ## Objectifs
 
-Un somnifère, 10 patients, les heures de sommeil gagnées avec deux doses (`sleep`, W. S. Gosset, 1908) :
+Deux somnifères, 10 patients, les heures de sommeil gagnées avec chacun (`sleep`, W. S. Gosset, 1908) :
 
 :::: columns
 ::: {.column width="50%"}
 ```{r}
 t.test(extra ~ group, data = sleep)$p.value
 ```
-« Pas de différence entre les doses. »
+« Pas de différence entre les somnifères. »
 :::
 
 ::: {.column width="50%"}
 ::: fragment
 ```{r}
 #| echo: false
-sommeil <- sleep |> pivot_wider(names_from = group, values_from = extra, names_prefix = "dose_")
+sommeil <- sleep |> pivot_wider(names_from = group, values_from = extra, names_prefix = "som_")
 ```
 ```{r}
-t.test(sommeil$dose_2, sommeil$dose_1,
+t.test(sommeil$som_2, sommeil$som_1,
        paired = TRUE)$p.value
 ```
-« La dose 2 fait mieux dormir. »
+« Le somnifère 2 fait mieux dormir. »
 :::
 :::
 ::::
@@ -92,7 +92,6 @@ t.test(sommeil$dose_2, sommeil$dose_1,
 4. Comparer plusieurs groupes
 5. La régression linéaire → **TP2**
 6. Tests multiples et expression différentielle → **TP3**
-7. Activité : auditer un script DESeq2 généré par IA
 
 ## Où en est-on ?
 
@@ -417,7 +416,7 @@ Quel jeu de données est compatible avec une loi normale ? Que montrent les troi
 1. **Normal** : les points suivent la droite
 2. **Asymétrique à droite** (loi exponentielle) : courbure en « banane »
 3. **Queues lourdes** (Student, 2 ddl) : les extrémités s'écartent de part et d'autre, des valeurs extrêmes
-4. **Bimodal** (deux groupes mélangés) : forme en S, un plateau au milieu. Un groupe caché dans les données ?
+4. **Bimodal** (deux groupes mélangés) : deux paliers, un par groupe, reliés par un saut au centre. Un groupe caché dans les données ?
 :::
 
 # Tester une hypothèse {.section-ul data-numero="3" background-color="#E30513"}
@@ -445,7 +444,7 @@ On ne « prouve » jamais H1 et on n'« accepte » jamais H0 : on rejette H0, ou
 
 ## La p-value, par simulation
 
-Si la dose n'avait **aucun effet** (H0), les étiquettes « dose 1 » et « dose 2 » seraient interchangeables. Mélangeons-les 10 000 fois :
+Si les deux somnifères avaient **le même effet** (H0), les étiquettes « 1 » et « 2 » seraient interchangeables. Mélangeons-les 10 000 fois :
 
 ```{r}
 #| include: false
@@ -517,6 +516,44 @@ Rapportez toujours **l'effet** (la différence, avec son intervalle de confiance
 :::
 :::
 
+## Que veut dire « IC à 95 % » ?
+
+:::: columns
+::: {.column width="58%"}
+```{r}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.5
+#| fig-height: 5
+set.seed(2026)
+ic <- map_dfr(1:50, \(i) { x <- rnorm(10, 10, 2); ci <- t.test(x)$conf.int
+  tibble(i = i, bas = ci[1], haut = ci[2], m = mean(x)) }) |>
+  mutate(couvre = bas <= 10 & haut >= 10)
+ggplot(ic, aes(y = i)) +
+  geom_vline(xintercept = 10, linetype = "dashed") +
+  geom_segment(aes(x = bas, xend = haut, yend = i, colour = couvre), linewidth = 0.9) +
+  geom_point(aes(x = m, colour = couvre), size = 1.3) +
+  scale_colour_manual(values = c(`TRUE` = "#4A7FC1", `FALSE` = "#E30513"), guide = "none") +
+  labs(x = "IC à 95 % de la moyenne", y = "Expérience") +
+  theme(axis.text.y = element_blank())
+```
+:::
+
+::: {.column width="42%"}
+50 expériences simulées de 10 mesures, vraie moyenne **10** (tirets).
+
+- Chaque expérience donne un intervalle différent
+- **`r sum(!ic$couvre)` sur 50** manquent la vraie valeur (en rouge) : environ 5 %
+- Le « 95 % » porte sur la **méthode** : sur beaucoup d'expériences, 95 % des intervalles contiennent la vraie valeur
+
+::: fragment
+::: remarque
+Un IC étroit dit que l'effet est **précisément** estimé ; un IC large, que les données sont compatibles avec des effets très différents, même si p < 0.05.
+:::
+:::
+:::
+::::
+
 ## Erreurs de type I et de type II
 
 | | H0 vraie (pas d'effet) | H0 fausse (un effet) |
@@ -527,11 +564,76 @@ Rapportez toujours **l'effet** (la différence, avec son intervalle de confiance
 - α est fixé à l'avance (souvent 5 %) : sur 100 tests **sans aucun effet**, environ 5 seront « significatifs »
 - La **puissance** augmente avec la taille de l'effet et le nombre de réplicats, et diminue avec la variabilité
 
+## α et β en image
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 4
+#| out-width: "85%"
+seuil <- qnorm(0.975)
+dens <- tibble(t = seq(-4, 6, 0.01), H0 = dnorm(t), H1 = dnorm(t, 2.5))
+ggplot(dens, aes(t)) +
+  geom_area(data = filter(dens, t >= seuil), aes(y = H0), fill = "#E30513", alpha = 0.6) +
+  geom_area(data = filter(dens, t <= seuil), aes(y = H1), fill = "#FFC103", alpha = 0.6) +
+  geom_line(aes(y = H0), linewidth = 1) +
+  geom_line(aes(y = H1), linewidth = 1, colour = "#1F5FB0") +
+  geom_vline(xintercept = seuil, linetype = "dashed") +
+  annotate("text", x = 0, y = 0.43, label = "si H0 est vraie", size = 5) +
+  annotate("text", x = 3.6, y = 0.43, label = "si un effet existe", colour = "#1F5FB0", size = 5) +
+  annotate("text", x = 3.1, y = 0.03, label = "α/2 : faux positif", colour = "#E30513", hjust = 0, size = 5) +
+  annotate("text", x = -1.3, y = 0.08, label = "β (jaune) : faux négatif", colour = "#B8860B", size = 5) +
+  annotate("text", x = seuil, y = 0.47, label = "seuil de rejet", hjust = -0.05, size = 4.5) +
+  labs(x = "Statistique de test", y = NULL) + theme(axis.text.y = element_blank())
+```
+
+- On rejette H0 au-delà du **seuil** : la zone rouge est le risque de faux positif, fixé par α
+- La zone jaune est le risque de **manquer** un effet réel (β) : déplacer le seuil vers la droite réduit α mais augmente β
+- Plus de réplicats **resserrent** les deux courbes : β diminue sans toucher à α
+
+## Combien de réplicats ?
+
+:::: columns
+::: {.column width="58%"}
+```{r}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.5
+#| fig-height: 4.6
+puissance <- expand_grid(n = 2:30, d = c(0.5, 1, 2)) |>
+  mutate(puissance = map2_dbl(n, d, \(n, d) power.t.test(n = n, delta = d, sd = 1)$power),
+         effet = factor(paste0("effet = ", d, " écart-type"),
+                        levels = paste0("effet = ", c(2, 1, 0.5), " écart-type")))
+ggplot(puissance, aes(n, puissance, colour = effet)) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", colour = "grey50") +
+  geom_line(linewidth = 1) + geom_point(size = 1.5) +
+  scale_colour_manual(values = c("#1F5FB0", "#E30513", "#FFC103"), name = NULL) +
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
+  labs(x = "Réplicats par groupe", y = "Puissance du t-test") +
+  theme(legend.position = "top", legend.text = element_text(size = 11))
+```
+:::
+
+::: {.column width="42%"}
+Probabilité de détecter l'effet (p < 0.05), selon le nombre de réplicats.
+
+- un effet de 2 écarts-types : **6 réplicats** par groupe pour 80 % de puissance
+- un effet d'un écart-type : il en faut **17**
+- un effet d'un demi-écart-type : **64** (30 ne donnent que 48 %)
+
+```{r}
+#| eval: false
+power.t.test(delta = 1, sd = 1,
+             power = 0.8)
+```
+
 ::: fragment
 ::: remarque
-3 réplicats par condition donnent une puissance faible : un résultat non significatif ne dit presque rien. **Le nombre de réplicats se décide avant l'expérience**, pas après.
+Avec 3 réplicats, un résultat non significatif ne dit presque rien. **Le nombre de réplicats se décide avant l'expérience.**
 :::
 :::
+:::
+::::
 
 ## Le t-test
 
@@ -587,7 +689,7 @@ wilcox.test(body_mass ~ sex, data = adelie, exact = FALSE)
 
 :::: columns
 ::: {.column width="50%"}
-Les données `sleep` : **les mêmes 10 patients** ont reçu les deux doses.
+Les données `sleep` : **les mêmes 10 patients** ont reçu les deux somnifères.
 
 ```{r}
 #| eval: false
@@ -609,13 +711,13 @@ ggplot(sleep, aes(group, extra, group = ID)) +
   geom_line(colour = "grey60") +
   geom_point(aes(colour = group), size = 3) +
   scale_colour_manual(values = c("#FFC103", "#4A7FC1"), guide = "none") +
-  labs(x = "Dose", y = "Sommeil gagné (h)")
+  labs(x = "Somnifère", y = "Sommeil gagné (h)")
 ```
 :::
 ::::
 
 ::: fragment
-Les patients varient beaucoup **entre eux**, mais presque toutes les lignes **montent** : 9 patients sur 10 dorment davantage avec la dose 2.
+Les patients varient beaucoup **entre eux**, mais presque toutes les lignes **montent** : 9 patients sur 10 dorment davantage avec le somnifère 2.
 :::
 
 ## Le même jeu, deux tests
@@ -637,8 +739,8 @@ Compare deux nuages de points : la variabilité **entre patients** noie l'effet.
 ```{r}
 sommeil <- sleep |>
   pivot_wider(names_from = group, values_from = extra,
-              names_prefix = "dose_")
-t.test(sommeil$dose_2, sommeil$dose_1,
+              names_prefix = "som_")
+t.test(sommeil$som_2, sommeil$som_1,
        paired = TRUE)$p.value
 ```
 
@@ -926,6 +1028,34 @@ plot(modele, which = 1:2)
 - **Résidus contre valeurs ajustées** : un nuage sans structure. Une courbe signale une relation non linéaire ; un entonnoir, des variances inégales
 - **Q-Q plot des résidus** : la normalité porte sur les **résidus**, pas sur $y$
 
+## Lire le graphique des résidus
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 3.8
+#| out-width: "95%"
+set.seed(5)
+xs <- runif(150, 0, 10)
+diag_res <- bind_rows(
+  tibble(cas = "1. correct : nuage sans structure", x = xs, y = 2 + xs + rnorm(150)),
+  tibble(cas = "2. courbe : relation non linéaire", x = xs, y = 2 + 0.3 * (xs - 5)^2 + xs + rnorm(150)),
+  tibble(cas = "3. entonnoir : variances inégales", x = xs, y = 2 + xs + rnorm(150, sd = 0.2 + 0.3 * xs))) |>
+  mutate(cas = fct_inorder(cas)) |>
+  group_by(cas) |> mutate(ajuste = fitted(lm(y ~ x)), residu = residuals(lm(y ~ x))) |> ungroup()
+ggplot(diag_res, aes(ajuste, residu)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point(alpha = 0.5, colour = "#4A7FC1") +
+  geom_smooth(method = "loess", formula = y ~ x, se = FALSE, colour = "#E30513") +
+  facet_wrap(~ cas, scales = "free", nrow = 1) + labs(x = "Valeurs ajustées", y = "Résidus")
+```
+
+Données simulées, la même droite `lm(y ~ x)` ajustée trois fois :
+
+1. Ce qu'on espère : les résidus ne dépendent pas de la valeur ajustée
+2. Une **courbe** : la relation n'est pas linéaire, la droite se trompe systématiquement aux extrémités et au centre
+3. Un **entonnoir** : la dispersion augmente avec la valeur (fréquent pour des concentrations ou des comptes) ; un log aide souvent
+
 ## Corrélation {.petit}
 
 $r$ mesure la force d'une relation **linéaire**, de −1 à 1.
@@ -1010,13 +1140,41 @@ Pente **positive** dans chaque espèce : l'espèce, **oubliée**, inversait la c
 
 ## Ne pas extrapoler
 
+:::: columns
+::: {.column width="45%"}
 ```{r}
 range(manchots$flipper_len, na.rm = TRUE)
-predict(modele, newdata = tibble(flipper_len = c(200, 300)))
+predict(modele, newdata =
+  tibble(flipper_len = c(200, 300)))
 ```
 
 - 200 mm : dans les données, la prédiction a un sens (≈ 4.2 kg)
 - 300 mm : **hors des données**, R prédit un manchot de 9 kg, sans aucun avertissement
+:::
+
+::: {.column width="55%"}
+```{r}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6
+#| fig-height: 4
+grille <- tibble(flipper_len = seq(150, 300, 1))
+bandes <- bind_cols(grille,
+  as_tibble(predict(modele, grille, interval = "confidence")) |> rename_with(~ paste0("ic_", .)),
+  as_tibble(predict(modele, grille, interval = "prediction")) |> rename_with(~ paste0("ip_", .)))
+etendue <- range(manchots$flipper_len, na.rm = TRUE)
+ggplot(bandes, aes(flipper_len)) +
+  annotate("rect", xmin = etendue[1], xmax = etendue[2], ymin = -Inf, ymax = Inf, fill = "grey92") +
+  geom_ribbon(aes(ymin = ip_lwr, ymax = ip_upr), fill = "#FFC103", alpha = 0.35) +
+  geom_ribbon(aes(ymin = ic_lwr, ymax = ic_upr), fill = "#E30513", alpha = 0.5) +
+  geom_point(data = manchots, aes(flipper_len, body_mass), alpha = 0.3, size = 0.8) +
+  geom_line(aes(y = ic_fit), colour = "#E30513") +
+  annotate("text", x = mean(etendue), y = Inf, vjust = 1.5, label = "données", size = 4.5) +
+  labs(x = "Nageoire (mm)", y = "Masse (g)")
+```
+[rouge : IC de la droite ; jaune : intervalle de **prédiction** d'un manchot]{.legende}
+:::
+::::
 
 ::: remarque
 Le modèle n'est valable que **dans l'étendue des données** qui ont servi à l'ajuster. R ne le sait pas, vous oui.
@@ -1148,6 +1306,59 @@ Les vrais effets forment un **pic près de 0**, au-dessus du fond uniforme.
 ::: remarque
 Regarder l'**histogramme des p-values** est le premier contrôle d'une analyse à grande échelle : plat = aucun signal ; pic près de 0 = du signal.
 :::
+
+## La procédure de Benjamini-Hochberg
+
+```{r}
+#| include: false
+m_tests <- length(p_mixte)
+bh <- tibble(p = p_mixte, vrai = vrai) |>
+  arrange(p) |>
+  mutate(rang = row_number(), seuil = rang / m_tests * 0.05)
+k_bh <- max(which(bh$p <= bh$seuil))
+stopifnot(k_bh == sum(p.adjust(p_mixte, "BH") < 0.05))
+```
+
+:::: columns
+::: {.column width="58%"}
+```{r}
+#| echo: false
+#| out-width: "100%"
+#| fig-width: 6.5
+#| fig-height: 4.6
+ggplot(arrange(filter(bh, rang <= 1500), desc(vrai)), aes(rang, p)) +
+  geom_point(aes(colour = ifelse(vrai, "vrai effet", "sans effet")), size = 0.7) +
+  geom_line(aes(y = seuil), colour = "#E30513", linewidth = 0.9) +
+  geom_hline(yintercept = 0.05 / m_tests, linetype = 2, colour = "grey40") +
+  geom_vline(xintercept = k_bh, linetype = 3, colour = "grey40") +
+  annotate("text", x = 1500, y = 1500 / m_tests * 0.05, label = "droite rang/m × α", hjust = 1, vjust = -0.6,
+           colour = "#E30513", size = 4.5) +
+  annotate("text", x = k_bh, y = 0.009, label = paste0("k = ", k_bh), hjust = -0.1, size = 4.5) +
+  annotate("text", x = 1500, y = 0.05 / m_tests, label = "Bonferroni : α/m", hjust = 1, vjust = -0.6,
+           colour = "grey40", size = 4.5) +
+  scale_colour_manual(values = c(`vrai effet` = "#4A7FC1", `sans effet` = "grey60"), name = NULL) +
+  coord_cartesian(ylim = c(0, 0.01)) +
+  labs(x = "Rang de la p-value (1 = la plus petite)", y = "p-value brute") +
+  theme(legend.position = "top")
+```
+:::
+
+::: {.column width="42%"}
+Sur la même simulation (m = 10 000 tests, α = 0.05) :
+
+1. Trier les p-values de la plus petite à la plus grande
+2. Comparer chacune à la droite **rang / m × α**
+3. Retenir toutes les p-values jusqu'au **dernier** point sous la droite : ici **k = `r k_bh`** gènes
+
+Bonferroni compare **toutes** les p-values au même seuil α/m (tirets), minuscule : il n'en retient que `r bilan$Bonferroni["retenus"]`.
+
+::: fragment
+::: remarque
+`p.adjust(p, "BH")` fait ce calcul pour vous : `padj < 0.05` revient exactement à cette règle.
+:::
+:::
+:::
+::::
 
 ## Les données RNA-seq : `airway` {.petit}
 
@@ -1438,76 +1649,6 @@ res_inv[c("ENSG00000152583", gene_na), ]
 :::
 
 # TP3 {.section-ul background-color="#E30513"}
-
-# Activité : auditer un script {.section-ul data-numero="7" background-color="#E30513"}
-
-## Auditer un script DESeq2 généré par IA {.audit}
-
-> *« J'ai 4 lignées de cellules musculaires lisses, chacune traitée ou non à la dexaméthasone (airway). Écris un script DESeq2 qui compte les gènes différentiellement exprimés (FDR < 5 %) et liste les 10 gènes les plus induits par le traitement. »*
-
-:::: columns
-::: {.column width="66%"}
-```{r}
-#| eval: false
-library(tidyverse)
-library(DESeq2)
-# Script vérifié : s'exécute sans erreur.
-comptes <- read_tsv("/home/public/stat/airway_counts.tsv") |>
-  column_to_rownames("gene") |> as.matrix()
-infos <- read_tsv("/home/public/stat/airway_sample_info.tsv") |>
-  column_to_rownames("Run")
-
-dds <- DESeqDataSetFromMatrix(countData = comptes, colData = infos,
-                              design = ~ dex)
-dds <- dds[rowSums(counts(dds)) >= 10, ]
-dds <- DESeq(dds)
-res <- results(dds)
-
-# 1. Nombre de gènes différentiellement exprimés (FDR < 5 %)
-res_df <- as.data.frame(res)
-nrow(res_df[res_df$padj < 0.05, ])
-
-# 2. Les 10 gènes les plus induits par la dexaméthasone
-res_df |>
-  filter(padj < 0.05) |>
-  arrange(desc(log2FoldChange)) |>
-  head(10)
-```
-:::
-
-::: {.column .donnees width="34%"}
-[`airway_sample_info.tsv` (colonnes utiles)]{.legende}
-
-```{r}
-#| echo: false
-#| comment: ""
-print(as.data.frame(read_tsv("data/airway_sample_info.tsv", show_col_types = FALSE) |>
-                      select(Run, cell, dex)), row.names = FALSE)
-```
-
-[`airway_counts.tsv`]{.legende}
-
-```{r}
-#| echo: false
-#| comment: ""
-cat(sprintf("%d gènes × %d échantillons", nrow(comptes), ncol(comptes)))
-```
-:::
-::::
-
-## Auditer : la démarche {.audit}
-
-**Le script s'exécute sans erreur. Au moins trois de ses résultats sont pourtant faux.**
-
-::: {.demarche}
-1. **Lire sans exécuter** : que fait réellement chaque ligne ? Lesquelles sont suspectes ?
-2. **Vérifier dans RStudio** : lire **tous** les messages, l'en-tête de `res`, les `NA`, et refaire le calcul autrement
-3. **Corriger** et commenter chaque correction
-:::
-
-::: remarque
-Indices : relisez la demande (que sait-on du **plan d'expérience** ?), la première ligne de `res`, et ce que fait un crochet `[ ]` d'un `NA`. Certaines lignes sont correctes : ne corrigez pas ce qui fonctionne.
-:::
 
 ## Ressources
 

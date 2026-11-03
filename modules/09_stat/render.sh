@@ -34,15 +34,13 @@ for f in TP1 TP2 TP3 Solutionnaire_TP1 Solutionnaire_TP2 Solutionnaire_TP3 Guide
   pdf "$f.html" "$f.pdf"
 done
 
-# Activité d'audit : corrigé d'abord (même raison que ci-dessous), HTML + PDF
-quarto render Audit_script_IA.qmd -M corrige:true -o Audit_script_IA_corrige.html
-quarto render Audit_script_IA.qmd -o Audit_script_IA.html
-pdf Audit_script_IA_corrige.html Audit_script_IA_corrige.pdf
-pdf Audit_script_IA.html Audit_script_IA.pdf
-
 # Exercice formatif : le corrigé d'abord, car Quarto efface l'autre PDF issu de la même source
 quarto render Exercice_formatif_stat.qmd -M corrige:true -o Exercice_formatif_stat_corrige.pdf
 quarto render Exercice_formatif_stat.qmd -o Exercice_formatif_stat.pdf
+
+# Notes de cours : livre Quarto (une page HTML par chapitre + PDF LaTeX) dans notes_de_cours/_book/
+# Les notes sont publiées à part : https://github.com/abodein/BIF-BOOK-7900
+if [ -d notes_de_cours ]; then quarto render notes_de_cours; fi
 
 rm -rf *_files
 echo "OK : $(ls *.pdf | tr '\n' ' ')"

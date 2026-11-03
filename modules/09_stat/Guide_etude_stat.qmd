@@ -114,12 +114,12 @@ On ne vous demandera pas de formules à apprendre par cœur ni de calculs à la 
 - Distinguer ce qui est faux de ce qui est correct (ne pas « corriger » un filtrage `rowSums >= 10` justifié).
 - Expliquer pourquoi ces erreurs viennent du **plan d'expérience et des données**, et pourquoi un outil qui ne les voit pas ne peut pas les éviter.
 
-*Où le travailler :* activité « Auditer un script DESeq2 généré par IA » et son corrigé.
+*Où le travailler :* les diapos « Piège » (groupe codé en nombre, paradoxe de Simpson), « Le niveau de référence », « Combien de gènes différentiellement exprimés ? », et les « Et si… ? » du TP3.
 
 # Comment vous préparer
 
 1. **Refaites sans ordinateur** les pauses « À vous », les « Et si… ? » des TP et l'exercice formatif : écrivez votre prédiction, *puis* vérifiez dans RStudio.
 2. Devant chaque sortie de test, prenez l'habitude de répondre à trois questions : **dans quel sens** est la différence ? **de combien** (IC) ? **sur combien d'observations** ?
 3. Devant chaque plan d'expérience, demandez-vous d'abord : les mesures sont-elles **indépendantes ou appariées** ? Quel est le **niveau de référence** ?
-4. Refaites l'activité d'audit **seul**, en appliquant les vérifications systématiques du corrigé.
+4. Reprenez le TP3 **seul** et vérifiez à chaque étape : l'en-tête de `res`, le `design`, le nombre de `NA` dans `padj`.
 5. Les solutionnaires des TP donnent les réponses et les explications : lisez surtout les explications.

@@ -1,0 +1,174 @@
+---
+title: "Solutionnaire du TP1"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(org.Hs.eg.db); library(GO.db)})
+knitr::opts_chunk$set(message = FALSE)
+```
+
+# À votre tour
+
+## 0. Importer et compter
+
+```{r}
+#| eval: false
+res <- read_tsv("/home/public/enrichissement/airway_deseq2.tsv")
+```
+
+```{r}
+#| echo: false
+# copie locale de /home/public/enrichissement/airway_deseq2.tsv
+res <- read_tsv("data/airway_deseq2.tsv", show_col_types = FALSE)
+```
+
+```{r}
+nrow(res)
+testes <- res |> filter(!is.na(padj))
+nrow(testes)
+de <- testes |> filter(padj < 0.05, abs(log2FoldChange) > 1)
+nrow(de)
+dplyr::count(de, sens = if_else(log2FoldChange > 0, "induit", "réprimé"))
+```
+
+`filter()` écarte les lignes où la condition vaut `NA` : les gènes non testés ne sont pas comptés. Avec un crochet (`res[res$padj < 0.05, ]`), ils le seraient.
+
+## 1. Explorer la base et sa version
+
+```{r}
+keytypes(org.Hs.eg.db)
+md <- AnnotationDbi::metadata(org.Hs.eg.db)
+md |> filter(str_detect(name, "SOURCEDATE"))
+```
+
+Chaque source a sa date. KEGG date de **mars 2011** : la licence de KEGG a changé cette année-là et ses données ne sont plus redistribuées dans ce package. Pour KEGG à jour, il faut passer par son site (`clusterProfiler::enrichKEGG()` l'interroge en ligne). Notez ces dates dans vos méthodes : une autre version donnera d'autres résultats.
+
+## 2. *BRCA1*
+
+```{r}
+AnnotationDbi::select(org.Hs.eg.db, keys = "BRCA1", keytype = "SYMBOL",
+                      columns = c("ENTREZID", "ENSEMBL", "GENENAME", "MAP"))
+uniprot_brca1 <- mapIds(org.Hs.eg.db, keys = "BRCA1", keytype = "SYMBOL",
+                        column = "UNIPROT", multiVals = "list")
+length(uniprot_brca1$BRCA1)
+"P38398" %in% uniprot_brca1$BRCA1
+```
+
+Un gène, `r length(uniprot_brca1$BRCA1)` accessions UniProt : l'entrée revue **Swiss-Prot** (`P38398`) et de nombreuses entrées **TrEMBL** (isoformes, fragments, séquences non revues).
+
+## 3. Entrez → symbole et Ensembl
+
+```{r}
+AnnotationDbi::select(org.Hs.eg.db, keys = c("672", "5468", "7157"), keytype = "ENTREZID",
+                      columns = c("SYMBOL", "ENSEMBL", "GENENAME"))
+```
+
+*BRCA1*, *PPARG* et *TP53*. Les clés sont des **chaînes** : les identifiants Entrez sont des nombres, mais `org.Hs.eg.db` les stocke comme du texte.
+
+## 4. Ajouter le symbole aux gènes DE
+
+```{r}
+de_annot <- de |>
+  mutate(symbole = mapIds(org.Hs.eg.db, keys = gene, keytype = "ENSEMBL", column = "SYMBOL"))
+sum(is.na(de_annot$symbole))
+de_annot |> arrange(desc(log2FoldChange)) |> head(10)
+```
+
+`mapIds()` renvoie **une** valeur par identifiant, dans le même ordre : on peut l'ajouter comme colonne sans risque de décalage. `r sum(is.na(de_annot$symbole))` gènes DE n'ont pas de symbole dans cette version de la base : ils disparaîtront de toute analyse qui passe par les symboles. Parmi les plus induits, plusieurs ont un `baseMean` faible (ex. *GUCY2D*) : un grand log2FoldChange calculé sur peu de lectures est moins fiable.
+
+## 5. Conversion avec `select()` : le un-à-plusieurs
+
+```{r}
+conv <- AnnotationDbi::select(org.Hs.eg.db, keys = de$gene, keytype = "ENSEMBL",
+                              columns = c("SYMBOL", "ENTREZID"))
+nrow(conv)
+conv |> dplyr::count(ENSEMBL) |> filter(n > 1)
+```
+
+`r nrow(conv)` lignes pour `r nrow(de)` gènes : certains identifiants Ensembl correspondent à **plusieurs** gènes Entrez (le message `'select()' returned 1:many mapping` le signale). Il faut décider quoi en faire (garder le premier, les garder tous, les écarter) et le dire.
+
+## 6. Interroger GO
+
+```{r}
+terme <- AnnotationDbi::select(GO.db, keys = "GO:0001838", keytype = "GOID",
+                               columns = c("TERM", "ONTOLOGY", "DEFINITION"))
+terme$TERM
+terme$ONTOLOGY
+terme$DEFINITION
+
+parents <- as.list(GOBPPARENTS["GO:0051384"])[[1]]
+parents
+AnnotationDbi::select(GO.db, keys = parents, keytype = "GOID", columns = "TERM")
+```
+
+Le nom de chaque élément de `parents` est la **relation** (`isa` : « est un »).
+
+## 7. Les annotations GO de *FKBP5*
+
+```{r}
+go_fkbp5 <- AnnotationDbi::select(org.Hs.eg.db, keys = "FKBP5", keytype = "SYMBOL",
+                                  columns = c("GO", "ONTOLOGY", "EVIDENCE"))
+nrow(go_fkbp5)
+dplyr::count(go_fkbp5, ONTOLOGY)
+dplyr::count(go_fkbp5, EVIDENCE, sort = TRUE)
+```
+
+Chaque ligne est une annotation gène → terme, avec son **code d'évidence**. `IEA` (annotation électronique) n'a été vérifiée par personne ; `IDA`, `IMP`, `IPI` reposent sur une expérience publiée.
+
+# Et si… ?
+
+## 1. Des identifiants versionnés
+
+```{r}
+#| error: true
+mapIds(org.Hs.eg.db, keys = paste0(de$gene, ".1"), keytype = "ENSEMBL", column = "SYMBOL")
+```
+
+```{r}
+ids_mixtes <- c(de$gene[1:3], paste0(de$gene[4], ".1"))
+mapIds(org.Hs.eg.db, keys = ids_mixtes, keytype = "ENSEMBL", column = "SYMBOL")
+```
+
+Si **tous** les identifiants portent une version : une **erreur**, aucun ne correspond. Si **quelques-uns** seulement : des `NA`, **sans erreur**, et ces gènes disparaissent en silence. Toujours retirer la version : `sub("\\..*", "", ids)`.
+
+## 2. `select()` masqué
+
+```{r}
+#| error: true
+res |> select(gene, padj)
+```
+
+`select()` désigne maintenant la fonction d'`AnnotationDbi`, qui ne sait pas traiter un tableau. L'erreur est visible ; la solution : `dplyr::select(gene, padj)`.
+
+## 3. Un ancien symbole
+
+```{r}
+#| error: true
+AnnotationDbi::select(org.Hs.eg.db, keys = "SEPT2", keytype = "SYMBOL", columns = "ENTREZID")
+AnnotationDbi::select(org.Hs.eg.db, keys = "SEPT2", keytype = "ALIAS", columns = "SYMBOL")
+```
+
+`SEPT2` n'est plus un symbole officiel : le HGNC a renommé les septines (*SEPTIN2*) en 2020, parce qu'Excel transformait `SEPT2` en date (2 septembre). Comme **alias**, `SEPT2` désigne **deux** gènes actuels : une ancienne liste de gènes ne se convertit pas sans ambiguïté.
+
+## 4. `multiVals`
+
+```{r}
+mapIds(org.Hs.eg.db, keys = "ENSG00000004866", keytype = "ENSEMBL", column = "SYMBOL")
+mapIds(org.Hs.eg.db, keys = "ENSG00000004866", keytype = "ENSEMBL", column = "SYMBOL",
+       multiVals = "list")
+```
+
+`"first"` (le défaut) garde *ST7* et écarte *ST7-OT3* **sans le signaler**. Pour un symbole d'affichage, c'est acceptable ; pour une analyse par Entrez, un gène est perdu.
+
+## 5. `left_join()` avec une table 1:n
+
+```{r}
+de_joint <- de |> left_join(conv, by = c("gene" = "ENSEMBL"))
+c(avant = nrow(de), apres = nrow(de_joint))
+dplyr::count(de_joint, sens = if_else(log2FoldChange > 0, "induit", "réprimé"))
+```
+
+La jointure **duplique** les gènes à correspondance multiple : `r nrow(de_joint)` lignes au lieu de `r nrow(de)`. Compter les gènes DE (ou les induits) sur ce tableau donnerait un nombre **gonflé**, sans message. Comparer `nrow()` avant et après chaque jointure.

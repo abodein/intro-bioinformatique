@@ -1,0 +1,244 @@
+---
+lang: fr
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 2cm
+      top: 2.6cm
+      bottom: 2.2cm
+    fontsize: 11pt
+    mainfont: "Helvetica Neue"
+    include-in-header: _ulaval.typ
+corrige: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, comment = "#>", message = FALSE)
+Sys.setenv(LANGUAGE = "en")
+options(width = 80)
+suppressPackageStartupMessages({library(tidyverse); library(igraph)})
+fr <- function(x, d = 2) format(round(x, d), decimal.mark = ",", big.mark = " ")
+dessine <- function(g, ...) {
+  par(mar = c(0, 0, 0, 0))
+  plot(g, vertex.color = "#4A7FC1", vertex.frame.color = "white", vertex.label.color = "white",
+       vertex.label.family = "sans", vertex.label.font = 2, edge.color = "grey55", ...)
+}
+```
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : introduction aux réseaux en biologie]
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{=typst}
+#cartouche[Exercice formatif : introduction aux réseaux en biologie — corrigé]
+```
+:::
+
+::: {.content-hidden when-meta="corrige"}
+Répondez **sans exécuter de code**. Le but est de vérifier ce que vous avez compris, pas d'avoir tout juste : on corrige ensemble juste après.
+:::
+
+::: {.content-visible when-meta="corrige"}
+Chaque réponse est suivie de la notion à revoir si elle a été manquée.
+:::
+
+## 1. Sans lever le crayon
+
+```{r}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 2.4
+#| out-width: "55%"
+maison <- make_graph(~ A - B, B - C, C - D, D - A, A - E, B - E)
+nicolas <- add_edges(maison, c("A", "C", "B", "D"))
+l_m <- cbind(c(0, 1, 1, 0, 0.5), c(1, 1, 0, 0, 1.7))
+par(mfrow = c(1, 2))
+dessine(maison, layout = l_m, vertex.size = 28, vertex.label.cex = 1.2, edge.width = 3); title("a", line = -1.2)
+dessine(nicolas, layout = l_m, vertex.size = 28, vertex.label.cex = 1.2, edge.width = 3); title("b", line = -1.2)
+```
+
+(a) et (b) : peut-on parcourir chaque lien une seule fois, sans lever le crayon ? Si oui, d'où faut-il partir ? Justifiez sans tracer. (c) Un réseau de régulation (un facteur de transcription → ses gènes cibles) est-il dirigé ? Peut-il contenir des boucles ? Que signifierait une boucle ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.2cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+On compte les degrés impairs. (a) Degrés `r paste(names(degree(maison)), degree(maison), collapse = ", ")` : **deux** nœuds impairs (A et B), donc oui, en partant de A et en finissant en B (ou l'inverse). (b) Degrés `r paste(names(degree(nicolas)), degree(nicolas), collapse = ", ")` : deux impairs (C et D), donc oui, en partant de C ou de D. (c) **Dirigé** (facteur → cible) ; une boucle est une **autorégulation** : le facteur régule son propre gène. *À revoir : le théorème d'Euler, les types de graphes (G-GRA).*
+:::
+
+## 2. Construire et lire un graphe
+
+```{r}
+aretes <- tibble(from  = c("P1", "P1", "P2", "P3"),
+                 to    = c("P2", "P3", "P3", "P4"),
+                 score = c(0.9, 0.4, 0.7, 0.95))
+proteines <- tibble(name = c("P1", "P2", "P3", "P4", "P5"))
+g1 <- graph_from_data_frame(aretes)
+g2 <- graph_from_data_frame(aretes, directed = FALSE, vertices = proteines)
+```
+
+(a) Que contient la première ligne de `g1` (lettres et nombres) ? Pourquoi pas de `W` ? (b) Et celle de `g2` ? (c) Écrivez la matrice d'adjacence de `g2`. (d) Déduisez-en le degré de chaque protéine et la densité de `g2`.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(3cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+```{r}
+#| echo: false
+cat(capture.output(print(g1))[1], capture.output(print(g2))[1], sep = "\n")
+as_adjacency_matrix(g2, sparse = FALSE)
+```
+
+(a) `DN--` : **dirigé** (défaut de `graph_from_data_frame()`), nommé, `r vcount(g1)` nœuds, `r ecount(g1)` liens. Pas de `W` : l'attribut s'appelle `score`, pas `weight`. (b) `UN--`, **`r vcount(g2)`** nœuds : P5, sans aucun lien, n'existe que grâce à `vertices`. (c) Ci-dessus : symétrique, diagonale nulle, ligne et colonne de P5 à 0. (d) Somme des lignes : `r paste(names(degree(g2)), degree(g2), collapse = ", ")` ; densité `r ecount(g2)` / (5 × 4 / 2) = **`r fr(edge_density(g2))`**. *À revoir : lire l'en-tête, nœuds isolés, matrice d'adjacence (G-REP).*
+:::
+
+## 3. Calculer à la main
+
+```{r}
+#| echo: false
+#| fig-width: 5
+#| fig-height: 2.2
+#| out-width: "45%"
+k <- make_graph(~ A - B, A - C, B - C, C - D, D - E, D - F, E - F)
+dessine(k, layout = cbind(c(0, 0, 1, 2, 3, 3), c(1, -1, 0, 0, 1, -1)), vertex.size = 24, vertex.label.cex = 1.3, edge.width = 3)
+```
+
+Calculez (a) le degré de chaque nœud et la densité ; (b) la distance de A à F et le diamètre ; (c) le *clustering* local de A et de C ; (d) quels nœuds ont la plus forte intermédiarité, et pourquoi ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.6cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) `r paste(names(degree(k)), degree(k), collapse = ", ")` ; densité `r ecount(k)` / 15 = **`r fr(edge_density(k))`**. (b) A–C–D–F : **`r distances(k, "A", "F")`** ; diamètre **`r diameter(k)`**. (c) A : voisins B et C, liés : **`r transitivity(k, "local", vids = "A")`**. C : voisins A, B, D ; un seul lien (A–B) sur 3 possibles : **`r fr(transitivity(k, "local", vids = "C"))`**. (d) **C et D** (`r betweenness(k)["C"]` chacun, les autres `r max(betweenness(k)[c("A", "B", "E", "F")])`) : tous les chemins entre les deux triangles passent par le pont C–D. *À revoir : degré, distance, clustering, intermédiarité (G-TOP).*
+:::
+
+## 4. Des poids qui trompent
+
+```{r}
+#| echo: false
+#| fig-width: 4
+#| fig-height: 2.4
+#| out-width: "38%"
+w <- graph_from_data_frame(tibble(from = c("A", "B", "A", "D"), to = c("B", "C", "D", "C"),
+                                  weight = c(0.95, 0.92, 0.65, 0.62)), directed = FALSE)
+dessine(w, layout = cbind(c(0, 1, 2, 1), c(0, 1, 0, -1)), vertex.size = 26, vertex.label.cex = 1.3,
+        edge.width = 3, edge.label = E(w)$weight, edge.label.color = "black", edge.label.cex = 1.1)
+```
+
+Dans ce petit réseau de co-expression, l'attribut `weight` est la corrélation entre deux gènes. (a) Quel chemin de A à C `shortest_paths(w, "A", "C")` renvoie-t-il ? Calculez sa longueur. (b) Quel gène a la plus forte intermédiarité selon `betweenness(w)` ? Et sans les poids ? (c) Proposez deux corrections.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.4cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) igraph lit `weight` comme une **longueur** : A–B–C = 0.95 + 0.92 = `r 0.95 + 0.92`, A–D–C = 0.65 + 0.62 = `r 0.65 + 0.62`. Il renvoie **`r paste(names(shortest_paths(w, "A", "C")$vpath[[1]]), collapse = "–")`**, le chemin des corrélations les **plus faibles**. (b) Avec les poids : `r paste(names(betweenness(w)), betweenness(w), collapse = ", ")` (D porte le chemin A–C). Sans les poids : `r paste(names(betweenness(w, weights = NA)), betweenness(w, weights = NA), collapse = ", ")`, tous égaux. Un classement faux, **sans message**. (c) `weights = NA` (nombre de liens), ou une vraie distance `weights = 1 / E(w)$weight` (le chemin devient `r paste(names(shortest_paths(w, "A", "C", weights = 1 / E(w)$weight)$vpath[[1]]), collapse = "–")`). *À revoir : piège des poids lus comme des distances (G-TOP, G-AUD).*
+:::
+
+## 5. Un réseau de co-expression
+
+```{r}
+#| echo: false
+coexpr <- read_tsv("data/airway_coexpr.tsv", show_col_types = FALSE)
+m <- coexpr |> dplyr::select(symbole, contains("_")) |> column_to_rownames("symbole") |> as.matrix()
+r <- cor(t(m))
+reprimes <- coexpr$symbole[coexpr$statut == "réprimé"]
+rep1 <- names(which.min(r["DUSP1", reprimes]))  # le réprimé le plus anticorrélé à DUSP1
+genes <- c("DUSP1", "ZBTB16", rep1, "DDX3Y")
+r4 <- round(r[genes, genes], 2)
+r4
+a_pos <- (r4 > 0.8) * 1; diag(a_pos) <- 0
+a_abs <- (abs(r4) > 0.8) * 1; diag(a_abs) <- 0
+g_pos <- graph_from_adjacency_matrix(a_pos, mode = "undirected")
+g_abs <- graph_from_adjacency_matrix(a_abs, mode = "undirected")
+statuts <- setNames(coexpr$statut, coexpr$symbole)[genes]
+set.seed(1)
+r_bruit <- cor(t(matrix(rnorm(150 * 8), nrow = 150)))
+b8 <- sum(r_bruit[upper.tri(r_bruit)] > 0.8)
+```
+
+Corrélations de Pearson entre quatre gènes d'`airway` (8 échantillons) : *`r genes[1]`* et *`r genes[2]`* sont induits par la dexaméthasone, *`r genes[3]`* est `r statuts[3]`, *`r genes[4]`* est sur le chromosome Y. (a) Quels liens avec le seuil r > 0.8 ? Quels gènes sont isolés ? (b) Et avec `abs(r) > 0.8` ? Qu'est-ce que cela change pour l'interprétation ? (c) Pourquoi faut-il se méfier d'une corrélation calculée sur 8 échantillons ? (d) Un lien *`r genes[1]`*–*`r genes[2]`* veut-il dire que l'un régule l'autre ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.8cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) `r ecount(g_pos)` lien : `r paste(apply(as_edgelist(g_pos), 1, paste, collapse = "–"), collapse = ", ")` ; isolés : `r paste0("*", names(which(degree(g_pos) == 0)), "*", collapse = ", ")`. (b) `r ecount(g_abs)` liens : `r paste(apply(as_edgelist(g_abs), 1, paste, collapse = "–"), collapse = ", ")`. Les gènes **anticorrélés** sont liés : induits et réprimés se retrouvent dans le même module, qui ne dit plus dans quel sens varient ses gènes (réseau non signé). (c) Avec si peu d'échantillons, de fortes corrélations apparaissent **par hasard** : sur 150 gènes de bruit pur et 8 échantillons, `r b8` paires sur `r fr(choose(150, 2), 0)` dépassent r = 0.8 (diapo « Piège : 8 échantillons »). (d) Non : une corrélation n'a ni **sens** ni **causalité** ; les deux gènes peuvent répondre au même facteur (le récepteur des glucocorticoïdes) : un lien **indirect**. *À revoir : co-expression, seuil, inférence (G-BIO).*
+:::
+
+## 6. Interpréter des modules
+
+```{r}
+#| echo: false
+adj <- (r > 0.8) * 1; diag(adj) <- 0
+g_co <- graph_from_adjacency_matrix(adj, mode = "undirected")
+set.seed(1)
+mods <- cluster_louvain(g_co)
+classe <- case_when(coexpr$statut != "non DE" ~ coexpr$statut,
+                    coexpr$chromosome %in% "Y" ~ "non DE, chr. Y",
+                    TRUE ~ "non DE, autre")
+tab6 <- table(module = as.integer(membership(mods)),
+              factor(classe, levels = c("induit", "réprimé", "non DE, autre", "non DE, chr. Y")))
+mod_y <- rownames(tab6)[which.max(tab6[, "non DE, chr. Y"])]
+```
+
+On applique `cluster_louvain()` (avec `set.seed(1)`) au réseau de co-expression des 150 gènes d'`airway` (r > 0.8), puis on compte les gènes de chaque module selon leur statut et leur chromosome (Y ou autre) :
+
+```{r}
+#| echo: false
+tab6
+```
+
+(a) Que montrent les modules induits et réprimés ? (b) Interprétez le module `r mod_y`. Comment le vérifier ? (c) Une camarade relance le calcul avec une autre graine : son module `r mod_y` contient des gènes induits. A-t-elle fait une erreur ?
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.6cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) Les modules sont presque **purs** : des modules de gènes induits, un module de gènes réprimés. Le traitement structure fortement l'expression. (b) Le module `r mod_y` regroupe des gènes **non DE**, presque tous sur le **chromosome Y** : ils varient ensemble parce qu'un des donneurs est une **donneuse** (gènes du Y éteints, *XIST* exprimé). Un module réel, sans rapport avec la dexaméthasone ; on le vérifie en regardant l'expression de *RPS4Y1* ou *XIST* par échantillon, ou les métadonnées des donneurs. (c) Pas forcément : Louvain est **aléatoire**, et surtout les numéros de modules sont des **étiquettes** ; il faut comparer les modules par leur **contenu**. *À revoir : modules, Louvain, interprétation (G-MOD).*
+:::
+
+## 7. Vérifier une analyse
+
+Un étudiant analyse un réseau d'interactions protéiques téléchargé de STRING :
+
+```{r}
+#| eval: false
+ppi <- read_tsv("interactions.tsv")   # prot1, prot2, weight = score STRING (0 à 1)
+g <- graph_from_data_frame(ppi)
+diameter(g)                           # « le signal traverse la cellule en ... étapes »
+modules <- cluster_louvain(g)
+```
+
+(a) R s'arrête à la dernière ligne avec `Multi-level community detection works for undirected graphs only`. Pourquoi ? (b) Deux autres problèmes, que R ne signale pas. (c) Après correction, il écrit : « *TP53* est le plus grand hub du réseau, c'est donc la protéine la plus importante ». Une objection.
+
+::: {.content-hidden when-meta="corrige"}
+```{=typst}
+#v(2.6cm)
+```
+:::
+
+::: {.content-visible when-meta="corrige"}
+(a) `graph_from_data_frame()` crée un graphe **dirigé** par défaut ; une interaction protéique n'a pas de sens : `directed = FALSE`. Ici l'erreur est visible ; ailleurs (degrés, chemins), elle passe en silence. (b) `diameter()` utilise `weight` comme une **distance** : le score de confiance est lu à l'envers (`weights = NA`). Les protéines sans interaction au-dessus du seuil de STRING sont **absentes** du graphe. Louvain est aléatoire : fixer la graine. (c) *TP53* est l'un des gènes les plus **étudiés** : il a plus d'interactions **connues**, pas forcément plus d'interactions réelles ; un hub issu de la littérature est d'abord un gène beaucoup publié. *À revoir : vérifier une analyse de réseau (G-AUD), les hubs (G-TOP).*
+:::

@@ -39,7 +39,7 @@ suppressPackageStartupMessages({
 })
 theme_set(theme_minimal(base_size = 16))
 source("_anim.R")  # tableaux en HTML (tableau(), rangee())
-# Les chunks qui génèrent des diapos utilisent output: asis (et non results: asis) : sans enveloppe .cell,
+# Les chunks qui génèrent des diapos utilisent output: asis et fig-align: default : sans enveloppe .cell,
 # sinon reveal.js ne voit pas les diapos générées et la navigation revient au début.
 dir.create("figure/anim", showWarnings = FALSE)  # images des séquences animées, régénérées à chaque rendu
 
@@ -341,6 +341,7 @@ Dans la version de `GO.db` installée : `r format(n_go$n[n_go$ONTOLOGY == "BP"],
 ```{r}
 #| echo: false
 #| output: asis
+#| fig-align: default
 # Propagation d'une annotation le long du graphe GO : trois diapos (graphe, annotation, propagation)
 parents_de <- function(id) setdiff(as.list(GOBPPARENTS[id])[[1]], "all")
 niveaux <- list("GO:0071385"); for (d in 2:4) niveaux[[d]] <- unique(unlist(lapply(niveaux[[d - 1]], parents_de)))
@@ -882,6 +883,7 @@ Taille du point : nombre de gènes ; couleur : `p.adjust` ; x : `GeneRatio`.
 ```{r}
 #| echo: false
 #| output: asis
+#| fig-align: default
 # L'urne avec et sans univers : la même liste, le même terme, deux attentes différents
 ora_sans_univers <- enrichGO(gene = induits$gene, OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP")
 lire_ratio <- function(x) as.integer(str_split_fixed(x, "/", 2))
@@ -961,6 +963,7 @@ stopifnot(!"GO:0051384" %in% id_tous, "GO:0051384" %in% id_sens)  # cité dans l
 ```{r}
 #| echo: false
 #| output: asis
+#| fig-align: default
 # Mélanger induits et réprimés : la liste double, k ne bouge presque pas
 deux_listes <- bind_rows(urne(ora_induits, "induits seuls"), urne(ora_tous, "induits + réprimés"))
 tab_mel <- function(lignes, new = NULL) {
@@ -1069,6 +1072,7 @@ tail(liste_gsea, 4)
 ```{r}
 #| echo: false
 #| output: asis
+#| fig-align: default
 # Somme courante pas à pas : une diapo par étape (tableau HTML animé + courbe enregistrée en PNG)
 jg <- tibble(rang = 1:12, gene = paste0("g", 1:12),
              `dans S` = c("oui", "oui", "non", "oui", "non", "oui", "non", "non", "oui", "non", "non", "non"))

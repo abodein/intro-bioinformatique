@@ -1,0 +1,211 @@
+---
+title: "Solutionnaire du TP1"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(igraph)})
+knitr::opts_chunk$set(fig.width = 8, fig.height = 5, out.width = "85%", message = FALSE)
+```
+
+# À votre tour
+
+## 0. Importer et compter
+
+```{r}
+#| eval: false
+got_aretes <- read_csv("/home/public/reseaux/got_edges.csv")
+got_sexe   <- read_csv("/home/public/reseaux/got_sex.csv")
+```
+
+```{r}
+#| echo: false
+# copies locales de /home/public/reseaux/
+got_aretes <- read_csv("data/got_edges.csv", show_col_types = FALSE)
+got_sexe   <- read_csv("data/got_sex.csv", show_col_types = FALSE)
+```
+
+```{r}
+nrow(got_aretes)
+nrow(got_sexe)
+persos <- unique(c(got_aretes$from, got_aretes$to))
+length(persos)
+setdiff(persos, got_sexe$name)
+setdiff(got_sexe$name, persos)
+```
+
+`r nrow(got_aretes)` liens, `r length(persos)` personnages distincts, exactement ceux du fichier des sexes (les deux `setdiff()` sont vides). Compter seulement `from` aurait sous-estimé le nombre de personnages : `r n_distinct(got_aretes$from)` au lieu de `r length(persos)`.
+
+## 1. Construire le graphe
+
+```{r}
+g <- graph_from_data_frame(got_aretes)
+g
+```
+
+`DNW-` : **D**irigé, nœuds **N**ommés, liens pondérés (**W**, car une colonne s'appelle `weight`), non bipartite. `r vcount(g)` nœuds, `r ecount(g)` liens. Dirigé, parce que c'est la valeur par défaut, alors que l'ordre `from`/`to` ne veut rien dire ici.
+
+```{r}
+got <- graph_from_data_frame(got_aretes, directed = FALSE, vertices = got_sexe)
+got
+vcount(got)
+ecount(got)
+```
+
+`UNW-` : non dirigé, et un nouvel attribut de nœud `sex (v/c)`.
+
+## 2. Les attributs
+
+```{r}
+names(vertex_attr(got))
+names(edge_attr(got))
+table(V(got)$sex)
+i <- which.max(E(got)$weight)
+E(got)[i]
+E(got)$weight[i]
+```
+
+`vertex_attr()` renvoie une **liste** (un élément par attribut, dans l'ordre de `V(got)`). `r sum(V(got)$sex == "F")` femmes pour `r sum(V(got)$sex == "M")` hommes. Le lien le plus lourd : Ned–Robert, `r E(got)$weight[i]` interactions.
+
+## 3. Dessiner
+
+```{r}
+#| fig-width: 12
+#| fig-height: 6
+#| out-width: "100%"
+couleurs <- if_else(V(got)$sex == "F", "#E30513", "#4A7FC1")
+tailles <- 2 + degree(got) / 4
+par(mfrow = c(1, 2), mar = c(0, 0, 1.5, 0))
+set.seed(1)
+plot(got, layout = layout_with_fr, vertex.color = couleurs, vertex.size = tailles,
+     vertex.label = NA, edge.color = "grey80", main = "layout_with_fr")
+plot(got, layout = layout_in_circle, vertex.color = couleurs, vertex.size = tailles,
+     vertex.label = NA, edge.color = "grey80", main = "layout_in_circle")
+```
+
+Les **positions** changent ; le graphe (les nœuds, les liens, les degrés, les couleurs) est le même. Fruchterman-Reingold rapproche les nœuds liés : on devine des groupes (la cour et les Stark au centre, Jon et la Garde de nuit d'un côté, Daenerys et les Dothrakis de l'autre). Le cercle ne montre presque rien. `vertex.color` et `vertex.size` suivent l'ordre de `V(got)` : c'est pourquoi on les calcule à partir de `V(got)$sex` et `degree(got)`, pas à partir de `got_sexe`.
+
+## 4. La matrice d'adjacence
+
+```{r}
+A <- as_adjacency_matrix(got, sparse = FALSE)
+dim(A)
+A[1:4, 1:4]
+isSymmetric(A)
+all(rowSums(A) == degree(got))
+sum(A)
+```
+
+Une matrice `r nrow(A)` × `r ncol(A)`, **symétrique** (graphe non dirigé), dont la somme des lignes est le degré. La somme totale, `r sum(A)`, vaut deux fois le nombre de liens : chaque lien remplit deux cases.
+
+```{r}
+W <- as_adjacency_matrix(got, attr = "weight", sparse = FALSE)
+isSymmetric(W)
+all(rowSums(W) == strength(got))
+W["Ned", "Robert"]
+mean(A == 0)
+```
+
+Avec les poids, la somme d'une ligne est la **force** (`strength()`), pas le degré. La matrice est vide à `r round(100 * mean(A == 0))` % : c'est pour cela qu'igraph renvoie par défaut une matrice **creuse** (`sparse = TRUE`).
+
+## 5. Le degré avec le tidyverse
+
+```{r}
+deg_tidy <- got_aretes |>
+  pivot_longer(c(from, to), values_to = "perso") |>
+  dplyr::count(perso, name = "degre")
+deg_tidy |> arrange(desc(degre)) |> head(5)
+all(deg_tidy$degre == degree(got)[deg_tidy$perso])
+```
+
+Chaque lien a **deux** extrémités : après `pivot_longer()`, chaque personnage apparaît une fois par lien. `count()` trie les noms par ordre alphabétique, `degree()` suit l'ordre de `V(got)` : on indexe donc par le **nom** (`degree(got)[deg_tidy$perso]`) avant de comparer. Comparer deux vecteurs dans des ordres différents donnerait un `FALSE` trompeur… ou pire, un `TRUE` par hasard.
+
+# Et si… ?
+
+## 1. Dirigé par défaut
+
+```{r}
+degree(g, "Ned", mode = "in")
+degree(g, "Ned", mode = "out")
+degree(g, "Ned")
+```
+
+Ned n'a **aucun** lien entrant et `r degree(g, "Ned", mode = "out")` sortants : dans le fichier, il est toujours dans la colonne `from`. Cela reflète l'ordre dans lequel le fichier a été écrit, pas une propriété des personnages. Le degré total est juste, mais tout calcul qui suit les flèches (distances, centralités, communautés) serait faux, **sans message**.
+
+## 2. Un nom mal écrit, un sexe mal placé
+
+```{r}
+#| error: true
+sexe_faute <- got_sexe |> mutate(name = if_else(name == "Ned", "Eddard", name))
+graph_from_data_frame(got_aretes, directed = FALSE, vertices = sexe_faute)
+```
+
+Avec `vertices`, une **erreur** : c'est la bonne situation, on voit le problème.
+
+```{r}
+g_sans <- graph_from_data_frame(got_aretes, directed = FALSE)
+V(g_sans)$sex <- got_sexe$sex
+head(V(g_sans)$name)
+head(got_sexe$name)
+sum(V(g_sans)$sex != V(got)$sex[match(V(g_sans)$name, V(got)$name)])
+```
+
+Sans `vertices`, les nœuds sont dans l'ordre d'**apparition** dans la liste d'arêtes, pas dans celui du fichier des sexes. L'affectation directe fonctionne, sans erreur ni message, et `r sum(V(g_sans)$sex != V(got)$sex[match(V(g_sans)$name, V(got)$name)])` personnages reçoivent le **mauvais** sexe. Si on tient à l'affecter après coup : `got_sexe$sex[match(V(g)$name, got_sexe$name)]`.
+
+## 3. Un personnage sans lien
+
+```{r}
+sexe_plus <- bind_rows(got_sexe, tibble(name = "Ghost", sex = "M"))
+vcount(graph_from_data_frame(got_aretes, directed = FALSE, vertices = sexe_plus))
+degree(graph_from_data_frame(got_aretes, directed = FALSE, vertices = sexe_plus), "Ghost")
+vcount(graph_from_data_frame(got_aretes, directed = FALSE))
+```
+
+Avec `vertices`, Ghost est un nœud **isolé** (degré 0). Sans `vertices`, il n'existe pas : une liste d'arêtes ne connaît que les nœuds qui ont au moins un lien. Pour un réseau de gènes, ce sont les gènes sans aucune interaction qui disparaissent, et toute proportion calculée sur `vcount()` change.
+
+## 4. Deux dessins sans graine
+
+```{r}
+#| fig-width: 12
+#| fig-height: 5
+#| out-width: "100%"
+par(mfrow = c(1, 2), mar = c(0, 0, 0, 0))
+plot(got, vertex.label = NA, vertex.size = 4)
+plot(got, vertex.label = NA, vertex.size = 4)
+```
+
+Deux images **différentes** : la disposition par défaut part d'une position aléatoire. Aucune n'est plus « vraie » que l'autre ; la position n'est pas une donnée. Pour un rapport, `set.seed()` ou `l <- layout_with_fr(got)` calculé une fois et réutilisé.
+
+## 5. Une matrice pondérée lue sans `weighted`
+
+```{r}
+g_mat <- graph_from_adjacency_matrix(W, mode = "undirected")
+g_mat
+ecount(g_mat)
+sum(E(got)$weight)
+count_multiple(g_mat, E(g_mat)[.from("Ned") & .to("Robert")])[1]
+```
+
+igraph `r packageVersion("igraph")` ne donne **ni erreur ni avertissement** : sans `weighted = TRUE`, chaque case est lue comme un **nombre de liens**. On obtient un multigraphe de `r ecount(g_mat)` liens (la somme des poids), sans attribut `weight` (pas de `W` dans l'en-tête), avec `r count_multiple(g_mat, E(g_mat)[.from("Ned") & .to("Robert")])[1]` liens parallèles entre Ned et Robert. Le degré de Ned devient `r degree(g_mat, "Ned")` au lieu de `r degree(got, "Ned")`. Avec `weighted = TRUE` :
+
+```{r}
+graph_from_adjacency_matrix(W, mode = "undirected", weighted = TRUE)
+```
+
+# Pour aller plus loin : `ggraph`
+
+```{r}
+#| fig-height: 6
+library(ggraph)
+set.seed(1)
+ggraph(got, layout = "fr") +
+  geom_edge_link(aes(edge_width = weight), alpha = 0.2) +
+  geom_node_point(aes(colour = sex, size = degree(got))) +
+  geom_node_text(aes(label = if_else(degree(got) >= 30, name, "")), repel = TRUE) +
+  scale_edge_width(range = c(0.2, 2)) +
+  theme_void()
+```
+
+La largeur des liens montre les relations fortes (Ned–Robert, Daenerys–Jorah) que le dessin non pondéré traite comme les autres. `facet_nodes(~ sex)` dessine un panneau par sexe, en gardant les mêmes positions.

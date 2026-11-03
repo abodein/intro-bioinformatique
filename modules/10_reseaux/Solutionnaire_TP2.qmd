@@ -1,0 +1,312 @@
+---
+title: "Solutionnaire du TP2"
+metadata-files: [_tp.yml]
+---
+
+```{r}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+suppressPackageStartupMessages({library(tidyverse); library(igraph)})
+theme_set(theme_minimal())
+knitr::opts_chunk$set(fig.width = 8, fig.height = 5, out.width = "85%", message = FALSE)
+```
+
+# Partie A : Game of Thrones
+
+## 0. Reconstruire le graphe
+
+```{r}
+#| eval: false
+got_aretes <- read_csv("/home/public/reseaux/got_edges.csv")
+got_sexe   <- read_csv("/home/public/reseaux/got_sex.csv")
+```
+
+```{r}
+#| echo: false
+# copies locales de /home/public/reseaux/
+got_aretes <- read_csv("data/got_edges.csv", show_col_types = FALSE)
+got_sexe   <- read_csv("data/got_sex.csv", show_col_types = FALSE)
+```
+
+```{r}
+got <- graph_from_data_frame(got_aretes, directed = FALSE, vertices = got_sexe)
+cat(capture.output(print(got))[1:2], sep = "\n")
+```
+
+## 1. Degré et force
+
+```{r}
+#| fig-height: 3.5
+tibble(k = degree(got)) |>
+  ggplot(aes(k)) + geom_histogram(binwidth = 2, fill = "#4A7FC1") +
+  labs(x = "degré k", y = "nombre de personnages")
+sum(degree(got) <= 3)
+sort(degree(got), decreasing = TRUE)[1:5]
+sort(strength(got), decreasing = TRUE)[1:5]
+```
+
+Une distribution très asymétrique : `r sum(degree(got) <= 3)` personnages sur `r vcount(got)` ont au plus 3 liens, quelques-uns en ont des dizaines (une « queue lourde »). Les quatre premiers sont les mêmes pour le degré et la force ; Robb (`r degree(got, "Robb")` liens) est remplacé par Daenerys en force : elle a moins de partenaires (`r degree(got, "Daenerys")`), mais interagit **beaucoup** avec eux (Jorah, Drogo…).
+
+## 2. Intermédiarité : avec ou sans poids
+
+```{r}
+sort(betweenness(got, weights = NA), decreasing = TRUE)[1:5]
+sort(betweenness(got), decreasing = TRUE)[1:5]
+```
+
+Sans préciser `weights`, igraph utilise l'attribut `weight` comme une **longueur** : un lien de 192 interactions devient un « long » chemin. Jorah et Aerys entrent dans le top 5, Robert et Daenerys en sortent. Ici le poids mesure une **proximité** : seul le classement avec `weights = NA` a un sens. Ned est en tête dans les deux cas, mais ce n'est pas une garantie.
+
+## 3. Chemins et diamètre
+
+```{r}
+distances(got, "Jon", "Daenerys", weights = NA)
+shortest_paths(got, "Jon", "Daenerys", weights = NA)$vpath[[1]]
+diameter(got, weights = NA)
+get_diameter(got, weights = NA)
+```
+
+Jon et Daenerys, que tout sépare dans la saison 1, ne sont qu'à `r distances(got, "Jon", "Daenerys", weights = NA)` liens, par Ned. Le diamètre est de `r diameter(got, weights = NA)` : aucun personnage n'est à plus de `r diameter(got, weights = NA)` étapes d'un autre (un petit monde). `get_diameter()` renvoie **un** des chemins de cette longueur ; il peut y en avoir plusieurs.
+
+## 4. Le réseau ego de Jon
+
+```{r}
+#| fig-height: 6
+ego_jon <- make_ego_graph(got, order = 1, nodes = "Jon")[[1]]
+vcount(ego_jon)
+ecount(ego_jon)
+degree(got, "Jon")
+set.seed(1)
+par(mar = c(0, 0, 0, 0))
+plot(ego_jon, vertex.size = 6, vertex.label.cex = 0.7, vertex.label.color = "black",
+     vertex.color = if_else(V(ego_jon)$name == "Jon", "#E30513", "#4A7FC1"), edge.color = "grey70")
+```
+
+`make_ego_graph()` renvoie une **liste** de graphes (un par nœud demandé) : d'où le `[[1]]`. Le réseau ego contient Jon et ses `r degree(got, "Jon")` voisins, soit `r vcount(ego_jon)` nœuds, et **tous** les liens entre eux : `r ecount(ego_jon)` liens, dont `r ecount(ego_jon) - degree(got, "Jon")` entre voisins de Jon.
+
+## 5. Les cliques
+
+```{r}
+clique_num(got)
+cliques_max <- largest_cliques(got)
+length(cliques_max)
+Reduce(intersect, lapply(cliques_max, names))
+```
+
+`r length(cliques_max)` cliques de `r clique_num(got)` personnages, qui partagent `r length(Reduce(intersect, lapply(cliques_max, names)))` membres : ce sont presque les mêmes. Une clique est trop stricte pour définir des groupes : un seul lien manquant suffit à la casser.
+
+## 6. Les communautés
+
+```{r}
+#| fig-height: 6
+set.seed(1)
+comm <- cluster_louvain(got)
+length(comm)
+sizes(comm)
+modularity(comm)
+membership(comm)[c("Ned", "Daenerys")]
+names(which(membership(comm) == membership(comm)["Daenerys"]))
+set.seed(1)
+par(mar = c(0, 0, 0, 0))
+plot(comm, got, vertex.label = NA, vertex.size = 4)
+```
+
+`r length(comm)` communautés, modularité `r round(modularity(comm), 2)` (au-dessus de 0,3 : une structure nette). Ned et Daenerys sont dans des communautés **différentes** ; celle de Daenerys réunit les personnages de l'intrigue d'Essos (Jorah, Drogo, Viserys, Illyrio, les Dothrakis). Les numéros sont des **étiquettes** : ils changeront avec une autre graine.
+
+# Partie B : un réseau de co-expression
+
+## 7. De l'expression au graphe
+
+```{r}
+#| eval: false
+coexpr <- read_tsv("/home/public/reseaux/airway_coexpr.tsv")
+```
+
+```{r}
+#| echo: false
+# copie locale de /home/public/reseaux/airway_coexpr.tsv
+coexpr <- read_tsv("data/airway_coexpr.tsv", show_col_types = FALSE)
+```
+
+```{r}
+m <- coexpr |>
+  dplyr::select(symbole, ends_with("trt")) |>
+  column_to_rownames("symbole") |>
+  as.matrix()
+dim(m)
+r <- cor(t(m))
+dim(r)
+adj <- (r > 0.8) * 1
+diag(adj) <- 0
+g_co <- graph_from_adjacency_matrix(adj, mode = "undirected")
+V(g_co)$statut <- coexpr$statut
+```
+
+`cor()` calcule les corrélations entre **colonnes** : sans `t()`, on obtiendrait une matrice 8 × 8 de corrélations entre échantillons. `ends_with("trt")` attrape `_untrt` et `_trt`. On peut ajouter `statut` dans l'ordre de `coexpr`, parce que les nœuds suivent l'ordre des lignes de `m`, lui-même celui de `coexpr` :
+
+```{r}
+identical(V(g_co)$name, coexpr$symbole)
+```
+
+## 8. Nœuds, liens, composantes
+
+```{r}
+vcount(g_co)
+ecount(g_co)
+sum(degree(g_co) == 0)
+comp <- igraph::components(g_co)
+comp$no
+sort(comp$csize, decreasing = TRUE)
+```
+
+`r ecount(g_co)` liens, `r sum(degree(g_co) == 0)` gènes isolés (chacun est une composante à lui seul), et une composante géante de `r max(comp$csize)` gènes. Avec `graph_from_adjacency_matrix()`, les isolés restent dans le graphe ; avec une liste d'arêtes, ils auraient disparu (TP1).
+
+## 9. Les hubs
+
+```{r}
+hubs <- sort(degree(g_co), decreasing = TRUE)[1:6]
+hubs
+V(g_co)$statut[match(names(hubs), V(g_co)$name)]
+table(V(g_co)$statut)
+```
+
+Les six hubs sont **induits** par la dexaméthasone, dont *DUSP1*, un gène cible classique des glucocorticoïdes. Plusieurs sont à égalité (`r unname(hubs[1])` liens) : un bloc de gènes très corrélés entre eux, plutôt qu'un « régulateur maître ». Un hub de co-expression n'est pas un régulateur : la corrélation n'a pas de sens.
+
+## 10. Les modules
+
+```{r}
+set.seed(1)
+modules <- cluster_louvain(g_co)
+length(modules)
+sizes(modules)
+table(module = membership(modules), statut = V(g_co)$statut)
+table(module = membership(modules), chromosome_Y = coexpr$chromosome == "Y", useNA = "ifany")
+```
+
+```{r}
+mod_y <- unique(membership(modules)[which(coexpr$chromosome == "Y")])
+mod_y
+```
+
+La plupart des modules sont **purs** : des induits d'un côté, des réprimés de l'autre (le réseau ne garde que les corrélations **positives**). Les modules d'un seul gène sont les gènes isolés. Le module `r mod_y` est fait de gènes **non DE** du chromosome **Y**.
+
+## 11. Le module du chromosome Y
+
+```{r}
+coexpr |>
+  filter(membership(modules) == mod_y) |>
+  dplyr::select(symbole, chromosome, statut)
+m[c("RPS4Y1", "DDX3Y", "XIST"), ]
+```
+
+Les gènes du Y sont éteints dans les deux échantillons du donneur N061011, qui exprime fortement *XIST* (l'ARN qui inactive un des deux X chez la femme) : c'est une **donneuse**. Les `r sum(is.na(coexpr$chromosome[membership(modules) == mod_y]))` gènes au chromosome `NA` sont des gènes sans symbole qui suivent exactement le même profil (vraisemblablement d'autres gènes du Y). Ce module est parfaitement cohérent et n'a **rien à voir** avec la dexaméthasone : traité ou non, chaque donneur garde son sexe. *XIST*, anticorrélé aux gènes du Y, n'est pas dans le module.
+
+# Et si… ?
+
+## 1. La valeur absolue
+
+```{r}
+adj_abs <- (abs(r) > 0.8) * 1
+diag(adj_abs) <- 0
+g_abs <- graph_from_adjacency_matrix(adj_abs, mode = "undirected")
+ecount(g_abs)
+set.seed(1)
+mod_abs <- membership(cluster_louvain(g_abs))
+table(module = mod_abs, statut = coexpr$statut)
+mod_abs[c("XIST", "RPS4Y1")]
+```
+
+`r ecount(g_abs)` liens au lieu de `r ecount(g_co)` : les paires **anticorrélées** sont maintenant liées. Des gènes induits et réprimés se retrouvent dans les mêmes modules (et *XIST* rejoint les gènes du Y). Un réseau « non signé » n'est pas faux, mais un module n'y veut plus dire « varient dans le même sens ».
+
+## 2. Un seuil plus strict
+
+```{r}
+adj_09 <- (r > 0.9) * 1
+diag(adj_09) <- 0
+g_09 <- graph_from_adjacency_matrix(adj_09, mode = "undirected")
+c(liens = ecount(g_09), isoles = sum(degree(g_09) == 0), composantes = igraph::components(g_09)$no)
+```
+
+`r ecount(g_09)` liens au lieu de `r ecount(g_co)`, `r sum(degree(g_09) == 0)` gènes isolés au lieu de `r sum(degree(g_co) == 0)`, `r igraph::components(g_09)$no` composantes au lieu de `r comp$no`. Le seuil est un **choix** qui change tout le réseau : une conclusion n'est solide que si elle résiste à plusieurs seuils.
+
+## 3. Des données aléatoires
+
+```{r}
+set.seed(1)
+bruit <- matrix(rnorm(150 * 8), nrow = 150)
+r_bruit <- cor(t(bruit))
+adj_bruit <- (r_bruit > 0.8) * 1
+diag(adj_bruit) <- 0
+g_bruit <- graph_from_adjacency_matrix(adj_bruit, mode = "undirected")
+ecount(g_bruit)
+sum(degree(g_bruit) == 0)
+set.seed(1)
+comm_bruit <- cluster_louvain(g_bruit)
+length(comm_bruit)
+modularity(comm_bruit)
+```
+
+`r ecount(g_bruit)` liens entre gènes **indépendants** : avec 8 échantillons, des corrélations > 0.8 apparaissent par hasard. Louvain trouve toujours des modules, et une modularité de `r round(modularity(comm_bruit), 2)`, plus **élevée** que dans les vraies données : un réseau très creux, fait de petits morceaux, est forcément « modulaire ». Une forte modularité ne prouve pas que les modules sont biologiques.
+
+## 4. Les poids lus comme des distances
+
+```{r}
+distances(got, "Jon", "Daenerys")
+shortest_paths(got, "Jon", "Daenerys")$vpath[[1]]
+```
+
+Sans `weights = NA`, la « distance » est la **somme des poids** du chemin : `r distances(got, "Jon", "Daenerys")` au lieu de `r distances(got, "Jon", "Daenerys", weights = NA)` liens. Le chemin choisi passe par des personnages secondaires (liens de **faible** poids) et évite Ned, pourtant lié fortement aux deux. Aucun message.
+
+## 5. Plusieurs graines
+
+```{r}
+map_dfr(1:5, function(graine) {
+  set.seed(graine)
+  cl <- cluster_louvain(got)
+  tibble(graine, communautes = length(cl),
+         tailles = paste(sort(sizes(cl), decreasing = TRUE), collapse = " "),
+         ned_avec_daenerys = membership(cl)["Ned"] == membership(cl)["Daenerys"])
+})
+```
+
+Le nombre et la taille des communautés **changent** selon la graine ; ici, Ned et Daenerys ne sont jamais ensemble, ce qui est une conclusion **stable**. C'est ce genre de vérification qui distingue un résultat d'un hasard d'exécution.
+
+## 6. `components()` masqué
+
+```{r}
+#| error: true
+#| warning: false
+suppressPackageStartupMessages(library(DESeq2))
+find("components")
+components(g_co)
+igraph::components(g_co)$no
+```
+
+Au chargement, R affiche `The following objects are masked from 'package:igraph': components, union` (le masquage vient du package `generics`, chargé par `BiocGenerics`, lui-même chargé par DESeq2). `components()` désigne alors une fonction **générique** qui ne connaît pas les objets igraph : `no applicable method for 'components' applied to an object of class "igraph"`. L'erreur est visible ; la solution : `igraph::components()`.
+
+# Pour aller plus loin
+
+## Interpréter un module
+
+```{r}
+#| eval: false
+library(clusterProfiler)
+library(org.Hs.eg.db)
+res <- read_tsv("/home/public/enrichissement/airway_deseq2.tsv")
+mod_induit <- as.integer(names(which.max(table(membership(modules)[coexpr$statut == "induit"]))))
+genes_module <- coexpr$gene[membership(modules) == mod_induit]
+ora_module <- enrichGO(gene = genes_module, universe = res$gene[!is.na(res$padj)],
+                       OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "BP", readable = TRUE)
+as_tibble(ora_module) |> dplyr::select(Description, GeneRatio, p.adjust) |> head(10)
+```
+
+L'univers : tous les gènes **testés** d'`airway`. Les 150 gènes du réseau ne conviennent pas : ils ont été choisis parce qu'ils varient beaucoup, ce qui biaise toute comparaison.
+
+## Une vraie distance
+
+```{r}
+d <- 1 / E(got)$weight
+shortest_paths(got, "Jon", "Daenerys", weights = d)$vpath[[1]]
+sort(betweenness(got, weights = d), decreasing = TRUE)[1:5]
+```
+
+Avec `1 / weight`, un lien fort est **court**. Le chemin Jon → Daenerys passe par Ned, Robert et Viserys : plus long en nombre de liens que par Ned seul, mais fait de relations fortes. Ned reste en tête de l'intermédiarité ; Jon y entre, Daenerys en sort. Trois réponses (`NA`, défaut, `1 / weight`) à trois questions différentes : c'est à vous de dire ce que signifie le poids.

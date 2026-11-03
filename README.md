@@ -10,6 +10,7 @@ Site : <https://abodein.github.io/intro-bioinformatique/>
 | `modules/06_tidyverse` | Manipuler des données avec le *tidyverse* |
 | `modules/07_visualisation` | Visualisation de données avec R (`ggplot2`) |
 | `modules/09_stat` | Introduction aux statistiques avec R |
+| `modules/10_reseaux` | Introduction aux réseaux en biologie |
 | `modules/11_enrichissement` | Bases de données et analyses fonctionnelles |
 
 Chaque module R contient des diapositives (revealjs), deux ou trois TP et leurs solutionnaires, un guide d'étude

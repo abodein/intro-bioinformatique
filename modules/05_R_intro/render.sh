@@ -43,5 +43,9 @@ pdf Audit_script_IA.html Audit_script_IA.pdf
 quarto render Exercice_formatif_R.qmd -M corrige:true -o Exercice_formatif_R_corrige.pdf
 quarto render Exercice_formatif_R.qmd -o Exercice_formatif_R.pdf
 
+# Notes de cours : livre Quarto (une page HTML par chapitre + PDF LaTeX) dans notes_de_cours/_book/
+# Les notes sont publiées à part : https://github.com/abodein/BIF-BOOK-7900
+if [ -d notes_de_cours ]; then quarto render notes_de_cours; fi
+
 rm -rf *_files df.tsv
 echo "OK : $(ls *.pdf | tr '\n' ' ')"

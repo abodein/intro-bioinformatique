@@ -38,5 +38,9 @@ done
 quarto render Exercice_formatif_tidyverse.qmd -M corrige:true -o Exercice_formatif_tidyverse_corrige.pdf
 quarto render Exercice_formatif_tidyverse.qmd -o Exercice_formatif_tidyverse.pdf
 
+# Notes de cours : livre Quarto (une page HTML par chapitre + PDF LaTeX) dans notes_de_cours/_book/
+# Les notes sont publiées à part : https://github.com/abodein/BIF-BOOK-7900
+if [ -d notes_de_cours ]; then quarto render notes_de_cours; fi
+
 rm -rf *_files echantillons.tsv mesures.tsv poids.csv
 echo "OK : $(ls *.pdf | tr '\n' ' ')"
